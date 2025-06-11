@@ -1,0 +1,16 @@
+version: '3.2'
+services:
+  postgres:
+      image: postgres:latest
+      volumes:
+          - postgres_data:/var/lib/postgresql/data
+          - ./psql.sql:/docker-entrypoint-initdb.d/psql.sql
+      environment:
+          POSTGRES_DB: project
+          POSTGRES_USER: project
+          POSTGRES_PASSWORD: project
+      ports:
+          - "5243:5432"
+
+volumes:
+  postgres_data:

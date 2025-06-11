@@ -1,0 +1,73 @@
+/* ...existing code... */
+body {
+    background: #f8f9fa;
+}
+.container {
+    max-width: 400px;
+    margin-top: 60px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 32px 24px 24px 24px;
+}
+h2.text-center {
+    margin-bottom: 24px;
+    color: #007bff;
+}
+.btn-block {
+    margin-top: 12px;
+}
+.form-group label {
+    font-weight: 500;
+}
+.form-control {
+    border-radius: 6px;
+}
+.text-center.mt-3 a {
+    color: #007bff;
+    text-decoration: none;
+}
+.text-center.mt-3 a:hover {
+    text-decoration: underline;
+}
+
+#walletBalanceContainer {
+    margin-bottom: 2rem;
+}
+
+#transactionsContainer {
+    margin-top: 2rem;
+}
+
+.card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 12px;
+}
+
+#balance.display-4 {
+    font-size: 2.5rem;
+    color: #28a745;
+    font-weight: bold;
+}
+
+#transactionsTable th, #transactionsTable td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+#transactionsTable {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    #walletBalanceContainer, #transactionsContainer {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .card {
+        margin-bottom: 1rem;
+    }
+}
+/* ...existing code... */
