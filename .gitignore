@@ -1,0 +1,6 @@
+accts-api/accts-api
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store

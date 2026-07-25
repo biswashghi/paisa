@@ -1,0 +1,15 @@
+services:
+  postgres:
+      image: postgres:15
+      volumes:
+          - postgres_data:/var/lib/postgresql/data
+          - ../db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      environment:
+          POSTGRES_DB: ${PAISA_POSTGRES_DB:-project}
+          POSTGRES_USER: ${PAISA_POSTGRES_USER:-project}
+          POSTGRES_PASSWORD: ${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}
+      ports:
+          - "5243:5432"
+
+volumes:
+  postgres_data:
