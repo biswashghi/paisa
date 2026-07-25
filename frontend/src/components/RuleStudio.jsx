@@ -2,7 +2,7 @@ import { createRule, createRulesTemplate, rulesToPayload, validateProgramRules }
 import StatusPill from "./StatusPill.jsx";
 import { useState } from "react";
 
-export default function RuleStudio({ program, onUpdateProgram, onCreateRulePackage, onUpdateRulePackage }) {
+export default function RuleStudio({ program, onUpdateProgram, onPublishProgramRules, onCreateRulePackage, onUpdateRulePackage, onPublishRulePackage }) {
   const [appliesTo, setAppliesTo] = useState("program_base");
   const [selectedPackageId, setSelectedPackageId] = useState(program.rulePackages?.[0]?.id || "");
   const selectedPackage = (program.rulePackages || []).find((pkg) => pkg.id === selectedPackageId) || program.rulePackages?.[0];
@@ -34,16 +34,20 @@ export default function RuleStudio({ program, onUpdateProgram, onCreateRulePacka
 
   function publish() {
     if (issues.length) return;
-    onUpdateProgram(program.id, {
+    const nextProgram = {
+      ...program,
       status: "published",
       validationScore: 99.1,
       rules: { ...program.rules, groups: program.rules.groups.map((item) => ({ ...item, status: "published" })) },
-    });
+    };
+    onUpdateProgram(program.id, nextProgram);
+    onPublishProgramRules(program.id, nextProgram);
   }
 
   function publishPackage() {
     if (!editingPackage || issues.length) return;
     onUpdateRulePackage(program.id, selectedPackage.id, { status: "published" });
+    onPublishRulePackage(program.id, selectedPackage, editableProgram);
   }
 
   function createPackage() {

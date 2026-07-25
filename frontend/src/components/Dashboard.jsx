@@ -1,15 +1,15 @@
 import SummaryCard from "./SummaryCard.jsx";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Dashboard({ programs, enrollments, transactions, selectedProgramId, onSelectProgram, onCreateProgram, onChangeView }) {
-  const selected = programs.find((program) => program.id === selectedProgramId) || programs[0];
+export default function Dashboard({ programs, enrollments, transactions, selectedProgramId, onSelectProgram, onCreateProgram, onSeedDemoSuite, onChangeView }) {
+  const selected = programs.find((program) => program.id === selectedProgramId) || programs[0] || emptyProgram;
   const totalMembers = enrollments.length;
   const activeMembers = enrollments.filter((enrollment) => enrollment.status === "active").length;
   const earnedThisMonth = transactions.filter((transaction) => transaction.points > 0).reduce((sum, transaction) => sum + transaction.points, 0);
   const totalLiability = programs.reduce((sum, program) => sum + program.liabilityPoints, 0);
   const published = programs.filter((program) => program.status === "published").length;
   const pendingEnrollments = enrollments.filter((enrollment) => enrollment.status !== "active").length;
-  const membersWithAddOns = enrollments.filter((enrollment) => enrollment.addOns.length > 0).length;
+  const membersWithAddOns = enrollments.filter((enrollment) => (enrollment.addOns || []).length > 0).length;
   const membershipByProgram = programs.map((program) => ({
     program,
     count: enrollments.filter((enrollment) => enrollment.programId === program.id).length,
@@ -33,6 +33,7 @@ export default function Dashboard({ programs, enrollments, transactions, selecte
         </div>
         <div className="hero-actions">
           <button type="button" onClick={() => onChangeView("rules")}>Open Rule Studio</button>
+          <button type="button" onClick={onSeedDemoSuite}>Seed API demo suite</button>
           <button className="primary" type="button" onClick={onCreateProgram}>Create program</button>
         </div>
       </div>
@@ -167,3 +168,12 @@ export default function Dashboard({ programs, enrollments, transactions, selecte
     </section>
   );
 }
+
+const emptyProgram = {
+  id: "",
+  name: "No program selected",
+  tierCode: "",
+  status: "draft",
+  validationScore: 0,
+  rulePackages: [],
+};

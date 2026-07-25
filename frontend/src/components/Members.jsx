@@ -6,14 +6,27 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
   const [moveProgramId, setMoveProgramId] = useState("");
   const [moveReason, setMoveReason] = useState("");
   const selected = enrollments.find((enrollment) => enrollment.id === selectedId) || enrollments[0];
+  if (!selected) {
+    return (
+      <section className="view-stack">
+        <div className="view-header">
+          <div>
+            <p className="eyebrow">Member rewards profile</p>
+            <h2>No members exist for this partner yet.</h2>
+          </div>
+        </div>
+      </section>
+    );
+  }
   const program = programs.find((item) => item.id === selected.programId);
   const availablePackages = program?.rulePackages || [];
-  const activePackages = availablePackages.filter((pkg) => selected.addOns.includes(pkg.id));
+  const selectedAddOns = selected.addOns || [];
+  const activePackages = availablePackages.filter((pkg) => selectedAddOns.includes(pkg.id));
   const memberTransactions = useMemo(
     () => transactions.filter((transaction) => transaction.member === selected.member),
     [transactions, selected.member],
   );
-  const candidatePackages = availablePackages.filter((pkg) => !selected.addOns.includes(pkg.id));
+  const candidatePackages = availablePackages.filter((pkg) => !selectedAddOns.includes(pkg.id));
 
   function moveMember() {
     if (!moveProgramId) return;
@@ -37,7 +50,7 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
             <button className={enrollment.id === selected.id ? "list-item selected" : "list-item"} type="button" key={enrollment.id} onClick={() => setSelectedId(enrollment.id)}>
               <strong>{enrollment.member}</strong>
               <span>{programs.find((item) => item.id === enrollment.programId)?.name}</span>
-              <small>{enrollment.addOns.length} add-ons / {enrollment.points.toLocaleString()} pts</small>
+              <small>{(enrollment.addOns || []).length} add-ons / {enrollment.points.toLocaleString()} pts</small>
               <StatusPill value={enrollment.status} />
             </button>
           ))}
@@ -115,7 +128,7 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
             </div>
             <div className="addon-grid">
               {availablePackages.map((pkg) => {
-                const active = selected.addOns.includes(pkg.id);
+                const active = selectedAddOns.includes(pkg.id);
                 return (
                   <article className={active ? "addon-card active" : "addon-card"} key={pkg.id}>
                     <div><strong>{pkg.name}</strong><StatusPill value={pkg.status} /></div>

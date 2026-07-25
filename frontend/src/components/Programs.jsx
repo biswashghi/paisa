@@ -6,10 +6,23 @@ const tabs = ["Base Rules", "Rule Packages", "Enrollments", "Earned Activity"];
 export default function Programs({ programs, selectedProgramId, enrollments, transactions, onSelectProgram, onCreateProgram, onUpdateProgram, onCreateRulePackage }) {
   const [activeTab, setActiveTab] = useState("Base Rules");
   const selected = programs.find((program) => program.id === selectedProgramId) || programs[0];
+  if (!selected) {
+    return (
+      <section className="view-stack">
+        <div className="view-header">
+          <div>
+            <p className="eyebrow">Program management</p>
+            <h2>No programs exist for this partner yet.</h2>
+          </div>
+          <button className="primary" type="button" onClick={onCreateProgram}>Create program</button>
+        </div>
+      </section>
+    );
+  }
   const programEnrollments = enrollments.filter((enrollment) => enrollment.programId === selected.id);
   const programTransactions = transactions.filter((transaction) => transaction.programId === selected.id);
   const assignedPackages = (selected.rulePackages || []).reduce((sum, pkg) => (
-    sum + enrollments.filter((enrollment) => enrollment.addOns.includes(pkg.id)).length
+    sum + enrollments.filter((enrollment) => (enrollment.addOns || []).includes(pkg.id)).length
   ), 0);
 
   return (
@@ -92,7 +105,7 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
                   <article key={pkg.id}>
                     <div><strong>{pkg.name}</strong><StatusPill value={pkg.status} /></div>
                     <span>{pkg.description}</span>
-                    <small>{pkg.rules.length} rules / Assigned to {enrollments.filter((enrollment) => enrollment.addOns.includes(pkg.id)).length} members</small>
+                  <small>{pkg.rules.length} rules / Assigned to {enrollments.filter((enrollment) => (enrollment.addOns || []).includes(pkg.id)).length} members</small>
                   </article>
                 ))}
               </div>
@@ -106,7 +119,7 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
                   <strong>{enrollment.member}</strong>
                   <span>{enrollment.email}</span>
                   <span>{enrollment.points.toLocaleString()} pts</span>
-                  <span>{enrollment.addOns.length} add-ons</span>
+                  <span>{(enrollment.addOns || []).length} add-ons</span>
                   <StatusPill value={enrollment.status} />
                 </div>
               ))}

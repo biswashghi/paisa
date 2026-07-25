@@ -1,4 +1,4 @@
-export default function TopBar({ partner, selectedProgram, onLogout }) {
+export default function TopBar({ partner, selectedProgram, apiBaseUrl, loading, onRefresh, onLogout }) {
   return (
     <header className="topbar">
       <div className="topbar-title">
@@ -20,8 +20,13 @@ export default function TopBar({ partner, selectedProgram, onLogout }) {
         </div>
         <div>
           <span>API Status</span>
-          <strong className="good-text">Operational</strong>
+          <strong className="good-text">{loading ? "Syncing" : "Connected"}</strong>
         </div>
+        <div>
+          <span>Backend</span>
+          <strong>{apiBaseUrl.replace(/^https?:\/\//, "")}</strong>
+        </div>
+        <button type="button" onClick={onRefresh} disabled={loading}>Refresh</button>
         <button type="button" onClick={onLogout}>Sign out</button>
       </div>
     </header>

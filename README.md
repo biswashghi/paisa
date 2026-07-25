@@ -111,12 +111,13 @@ npm install
 npm run dev
 ```
 
-Open the Vite localhost URL printed by `npm run dev`. The page is a small local partner-admin console
-that calls the backend API at `http://localhost:8080`. It includes the end-to-end
-flow plus basic dashboard, programs, rule review/validation, members,
-transactions, ledger, and export views. Use **Run partner suite** to create
-multiple partners, programs, rule versions, members, and transactions, then check
-expected earn/refund balances against backend calculations.
+Open the Vite localhost URL printed by `npm run dev`. The page is an API-backed
+partner-admin console that calls the backend at `http://localhost:8080`. Login
+with a readable `partner_key`; the UI will create that local test partner if it
+does not exist. Use **Seed API demo suite** to create programs, published rules,
+members, member add-ons, transactions, calculations, balances, and ledger rows in
+Postgres, then inspect the refreshed dashboard, programs, rules, members, and
+transactions views.
 
 ## Smoke Test Localhost Clients
 
