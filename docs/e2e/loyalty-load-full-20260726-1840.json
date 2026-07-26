@@ -1,0 +1,106 @@
+{
+  "apiBase": "http://127.0.0.1:8081",
+  "runId": "full-20260726-1840",
+  "requested": {
+    "partners": 3,
+    "programsPerPartner": 2,
+    "members": 1000,
+    "transactions": 10000,
+    "redemptions": 1000
+  },
+  "created": {
+    "partners": 3,
+    "programs": 6,
+    "ruleVersions": 6,
+    "catalogItems": 6,
+    "members": 1000,
+    "transactions": 10000,
+    "redemptionsReserved": 1000,
+    "redemptionsValidated": 1000,
+    "redemptionsCaptured": 1000
+  },
+  "processed": {
+    "events": 10000,
+    "failed": 0,
+    "iterations": 201
+  },
+  "verified": {
+    "transactions": 10000,
+    "redemptions": 1000,
+    "capturedRedemptions": 1000,
+    "sampleBalances": [
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-1",
+        "memberId": "6d7360d6-fce1-4cda-8968-a7814f2153ee",
+        "availablePoints": 9900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-1",
+        "memberId": "e326e31b-8e6e-4b9e-824e-b1fe6b4362ad",
+        "availablePoints": 10900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-1",
+        "memberId": "05c06ee6-94da-4bee-acbf-51d0122d03d8",
+        "availablePoints": 10900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-2",
+        "memberId": "6c0ca220-ed22-40f1-a3ba-c8dd480fc5e1",
+        "availablePoints": 10900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-2",
+        "memberId": "432a1f30-8d4a-42ee-83b3-36605983d4c0",
+        "availablePoints": 10900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-2",
+        "memberId": "01d601e1-a77b-4284-bde2-9a2912eab688",
+        "availablePoints": 10900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-3",
+        "memberId": "806d1569-d6b1-431d-8c8e-8b393511b1d2",
+        "availablePoints": 11900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-3",
+        "memberId": "2448cd73-11c5-47da-8b6f-55a71166cc08",
+        "availablePoints": 11900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      },
+      {
+        "partnerKey": "e2e-store-full-20260726-1840-3",
+        "memberId": "37cc8f1c-8edf-440e-8aec-d1a5e8fe1ca2",
+        "availablePoints": 11900,
+        "reservedPoints": 0,
+        "expiredPoints": 0
+      }
+    ]
+  },
+  "timingsMs": {
+    "setup": 1894,
+    "ingest": 16339,
+    "process": 79695,
+    "redeem": 4204,
+    "verify": 21308,
+    "total": 123465
+  },
+  "notes": []
+}

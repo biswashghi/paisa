@@ -5,11 +5,8 @@ export default function Login({ partner, partnerKey, apiBaseUrl, error, loading,
     <main className="login-page">
       <section className="login-card">
         <PaisaLogo variant="login" />
-        <p className="eyebrow">Default partner login</p>
-        <h1>Paisa Partner Admin</h1>
-        <p className="login-copy">
-          Manage loyalty programs, earning rules, enrolled members, and reward activity from one partner workspace.
-        </p>
+        <p className="eyebrow">Partner login</p>
+        <h1>Paisa</h1>
         <div className="login-partner">
           <span>Partner</span>
           <strong>{partner.name}</strong>

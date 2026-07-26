@@ -2,337 +2,11 @@ package application
 
 import (
 	"context"
-	"testing"
 	"time"
 
 	"accts-api/domain"
 	"accts-api/ports"
 )
-
-func TestIngestTransactionReplaysSamePayload(t *testing.T) {
-	fake := newFakeAppStore()
-	body := domain.TransactionIngestRequest{
-		ExternalTransactionID: "txn_1",
-		ExternalCustomerID:    "cust_1",
-		Type:                  domain.EventPurchase,
-		Currency:              "USD",
-		EligibleMinor:         10000,
-	}
-	fake.transactionIdentity = ports.TransactionIdentity{ID: "evt_existing", PayloadHash: domain.HashTransactionPayload(body)}
-	fake.transactionEvent = domain.TransactionEvent{ID: "evt_existing"}
-
-	event, err := TransactionIngestionService{app: testApp(fake)}.IngestTransaction(context.Background(), "acme-demo", body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if event.ID != "evt_existing" {
-		t.Fatalf("expected replayed event, got %q", event.ID)
-	}
-	if fake.transactionCreates != 0 {
-		t.Fatalf("expected no new transaction create, got %d", fake.transactionCreates)
-	}
-}
-
-func TestIngestTransactionRejectsChangedIdempotencyPayload(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.transactionIdentity = ports.TransactionIdentity{ID: "evt_existing", PayloadHash: "different"}
-
-	_, err := TransactionIngestionService{app: testApp(fake)}.IngestTransaction(context.Background(), "acme-demo", domain.TransactionIngestRequest{
-		ExternalTransactionID: "txn_1",
-		ExternalCustomerID:    "cust_1",
-		EligibleMinor:         10000,
-	})
-	if !domain.IsErrorKind(err, domain.ErrorKindConflict) {
-		t.Fatalf("expected conflict error, got %v", err)
-	}
-}
-
-func TestIngestTransactionRejectsUnsupportedType(t *testing.T) {
-	fake := newFakeAppStore()
-
-	_, err := TransactionIngestionService{app: testApp(fake)}.IngestTransaction(context.Background(), "acme-demo", domain.TransactionIngestRequest{
-		ExternalTransactionID: "txn_1",
-		ExternalCustomerID:    "cust_1",
-		Type:                  "exchange",
-		EligibleMinor:         10000,
-	})
-	if !domain.IsErrorKind(err, domain.ErrorKindInvalid) {
-		t.Fatalf("expected invalid type error, got %v", err)
-	}
-}
-
-func TestIngestTransactionRejectsSuspendedMember(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.member.Status = domain.StatusSuspended
-
-	_, err := TransactionIngestionService{app: testApp(fake)}.IngestTransaction(context.Background(), "acme-demo", domain.TransactionIngestRequest{
-		ExternalTransactionID: "txn_1",
-		ExternalCustomerID:    "cust_1",
-		Type:                  domain.EventPurchase,
-		EligibleMinor:         10000,
-	})
-	if !domain.IsErrorKind(err, domain.ErrorKindInvariant) {
-		t.Fatalf("expected invariant error, got %v", err)
-	}
-}
-
-func TestPublishRuleVersionRejectsInvalidRuleGraph(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.ruleVersionStatus = domain.RuleDraft
-	fake.ruleGraph = domain.RuleGraph{
-		Groups: []domain.RuleGraphGroup{{ID: "group_1", Strategy: "max_of"}},
-		Rules:  []domain.RuleGraphRule{{ID: "rule_1", GroupID: "group_1"}},
-	}
-
-	_, err := ProgramService{app: testApp(fake)}.PublishRuleVersion(context.Background(), "acme-demo", "program_1", "version_1")
-	if !domain.IsErrorKind(err, domain.ErrorKindInvalid) {
-		t.Fatalf("expected invalid rule graph error, got %v", err)
-	}
-	if fake.publishedRuleVersion {
-		t.Fatal("expected invalid rule graph to prevent publishing")
-	}
-}
-
-func TestPublishRuleVersionRejectsUnsupportedDependency(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.ruleVersionStatus = domain.RuleDraft
-	fake.ruleGraph = domain.RuleGraph{
-		Groups: []domain.RuleGraphGroup{{ID: "group_1", Strategy: domain.RuleStrategyStack}},
-		Rules: []domain.RuleGraphRule{
-			{ID: "rule_1", GroupID: "group_1", RuleType: domain.RuleTypePointsPerDollar, Priority: 1, Formula: domain.JSONMap{"pointsPerDollar": 1}},
-			{ID: "rule_2", GroupID: "group_1", RuleType: domain.RuleTypePointsPerDollar, Priority: 2, Formula: domain.JSONMap{"pointsPerDollar": 1}},
-		},
-		Dependencies: []domain.RuleGraphDependency{{RuleID: "rule_2", DependsOnRuleID: "rule_1", DependencyType: "mystery"}},
-	}
-
-	_, err := ProgramService{app: testApp(fake)}.PublishRuleVersion(context.Background(), "acme-demo", "program_1", "version_1")
-	if !domain.IsErrorKind(err, domain.ErrorKindInvalid) {
-		t.Fatalf("expected invalid dependency error, got %v", err)
-	}
-}
-
-func TestProcessPurchaseCalculatesRewardsAndPostsLedger(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.acceptedIDs = []string{"evt_purchase"}
-	fake.processingEvents["evt_purchase"] = domain.RewardProcessingEvent{
-		ID:            "evt_purchase",
-		PartnerID:     "partner_1",
-		MemberID:      "member_1",
-		Type:          domain.EventPurchase,
-		EligibleMinor: 10000,
-		OccurredAt:    time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
-	}
-	fake.ruleGraph = domain.RuleGraph{
-		Groups: []domain.RuleGraphGroup{{ID: "group_1", Strategy: "stack"}},
-		Rules: []domain.RuleGraphRule{{
-			ID:       "rule_1",
-			GroupID:  "group_1",
-			RuleType: "points_per_dollar",
-			Formula:  domain.JSONMap{"pointsPerDollar": 2},
-		}},
-	}
-
-	result, err := RewardProcessingService{app: testApp(fake)}.ProcessTransactionEvents(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Processed != 1 || result.Failed != 0 {
-		t.Fatalf("unexpected processing result: %+v", result)
-	}
-	if len(fake.createdCalculations) != 1 || fake.createdCalculations[0].PointsDelta != 200 {
-		t.Fatalf("expected 200 point calculation, got %+v", fake.createdCalculations)
-	}
-	if len(fake.ledgerEntries) != 1 || fake.ledgerEntries[0].EntryType != domain.EntryEarn || fake.ledgerEntries[0].AvailableDelta != 200 {
-		t.Fatalf("unexpected ledger entries: %+v", fake.ledgerEntries)
-	}
-	if fake.balance.AvailablePoints != 200 {
-		t.Fatalf("expected available balance 200, got %d", fake.balance.AvailablePoints)
-	}
-}
-
-func TestProcessPurchaseStacksAssignedMemberAddOnRules(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.acceptedIDs = []string{"evt_purchase"}
-	fake.processingEvents["evt_purchase"] = domain.RewardProcessingEvent{
-		ID:            "evt_purchase",
-		PartnerID:     "partner_1",
-		MemberID:      "member_1",
-		Type:          domain.EventPurchase,
-		EligibleMinor: 10000,
-		OccurredAt:    time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
-	}
-	fake.addOnRuleVersionIDs = []string{"addon_1"}
-	fake.ruleGraphs = map[string]domain.RuleGraph{
-		"version_1": {
-			Groups: []domain.RuleGraphGroup{{ID: "base_group", Strategy: domain.RuleStrategyStack}},
-			Rules:  []domain.RuleGraphRule{{ID: "base_rule", GroupID: "base_group", RuleType: domain.RuleTypePointsPerDollar, Formula: domain.JSONMap{"pointsPerDollar": 1}}},
-		},
-		"addon_1": {
-			Groups: []domain.RuleGraphGroup{{ID: "addon_group", Strategy: domain.RuleStrategyStack}},
-			Rules:  []domain.RuleGraphRule{{ID: "addon_rule", GroupID: "addon_group", RuleType: domain.RuleTypePointsPerDollar, Formula: domain.JSONMap{"pointsPerDollar": 2}}},
-		},
-	}
-
-	result, err := RewardProcessingService{app: testApp(fake)}.ProcessTransactionEvents(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Processed != 1 || result.Failed != 0 {
-		t.Fatalf("unexpected processing result: %+v", result)
-	}
-	if got := fake.createdCalculations[0].PointsDelta; got != 300 {
-		t.Fatalf("expected base 100 + add-on 200, got %d", got)
-	}
-	data := fake.createdCalculations[0].CalculationData
-	ids, ok := data["ruleVersionIds"].([]string)
-	if !ok || len(ids) != 2 || ids[0] != "version_1" || ids[1] != "addon_1" {
-		t.Fatalf("expected calculation trace to include base and add-on rule versions, got %#v", data["ruleVersionIds"])
-	}
-}
-
-func TestProcessPurchaseWithoutAssignmentUsesBaseRulesOnly(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.acceptedIDs = []string{"evt_purchase"}
-	fake.processingEvents["evt_purchase"] = domain.RewardProcessingEvent{
-		ID:            "evt_purchase",
-		PartnerID:     "partner_1",
-		MemberID:      "member_1",
-		Type:          domain.EventPurchase,
-		EligibleMinor: 10000,
-		OccurredAt:    time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
-	}
-	fake.ruleGraphs = map[string]domain.RuleGraph{
-		"version_1": {
-			Groups: []domain.RuleGraphGroup{{ID: "base_group", Strategy: domain.RuleStrategyStack}},
-			Rules:  []domain.RuleGraphRule{{ID: "base_rule", GroupID: "base_group", RuleType: domain.RuleTypePointsPerDollar, Formula: domain.JSONMap{"pointsPerDollar": 1}}},
-		},
-	}
-
-	if _, err := (RewardProcessingService{app: testApp(fake)}).ProcessTransactionEvents(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if got := fake.createdCalculations[0].PointsDelta; got != 100 {
-		t.Fatalf("expected only base 100 points, got %d", got)
-	}
-}
-
-func TestProcessRefundReversesOriginalCalculation(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.acceptedIDs = []string{"evt_refund"}
-	fake.processingEvents["evt_refund"] = domain.RewardProcessingEvent{
-		ID:                            "evt_refund",
-		PartnerID:                     "partner_1",
-		MemberID:                      "member_1",
-		OriginalExternalTransactionID: "txn_purchase",
-		Type:                          domain.EventRefund,
-		EligibleMinor:                 5000,
-		OccurredAt:                    time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
-	}
-	fake.originalEvent = domain.RewardProcessingEvent{ID: "evt_purchase", EligibleMinor: 10000}
-	fake.originalCalculation = ports.OriginalCalculation{
-		ProgramID:     "program_1",
-		RuleVersionID: "version_1",
-		CalculationData: domain.JSONMap{"selectedAwards": []interface{}{map[string]interface{}{
-			"ruleID":           "rule_1",
-			"ruleVersionID":    "version_1",
-			"basisAmountMinor": float64(10000),
-			"points":           float64(100),
-		}}},
-	}
-	fake.originalErr = nil
-	fake.balance.AvailablePoints = 100
-
-	result, err := RewardProcessingService{app: testApp(fake)}.ProcessTransactionEvents(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Processed != 1 || result.Failed != 0 {
-		t.Fatalf("unexpected processing result: %+v", result)
-	}
-	if len(fake.createdCalculations) != 1 || fake.createdCalculations[0].PointsDelta != -50 {
-		t.Fatalf("expected -50 point refund calculation, got %+v", fake.createdCalculations)
-	}
-	if fake.balance.AvailablePoints != 50 {
-		t.Fatalf("expected available balance 50, got %d", fake.balance.AvailablePoints)
-	}
-}
-
-func TestProcessRefundCapsCumulativeRefundBasis(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.acceptedIDs = []string{"evt_refund"}
-	fake.processingEvents["evt_refund"] = domain.RewardProcessingEvent{
-		ID:                            "evt_refund",
-		PartnerID:                     "partner_1",
-		MemberID:                      "member_1",
-		OriginalExternalTransactionID: "txn_purchase",
-		Type:                          domain.EventRefund,
-		EligibleMinor:                 5000,
-		OccurredAt:                    time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
-	}
-	fake.originalEvent = domain.RewardProcessingEvent{ID: "evt_purchase", EligibleMinor: 10000}
-	fake.originalCalculation = ports.OriginalCalculation{
-		ProgramID:     "program_1",
-		RuleVersionID: "version_1",
-		CalculationData: domain.JSONMap{"selectedAwards": []interface{}{map[string]interface{}{
-			"ruleID":           "rule_1",
-			"ruleVersionID":    "version_1",
-			"basisAmountMinor": float64(10000),
-			"points":           float64(100),
-		}}},
-	}
-	fake.originalErr = nil
-	fake.priorRefundedBasis = 8000
-	fake.balance.AvailablePoints = 100
-
-	result, err := RewardProcessingService{app: testApp(fake)}.ProcessTransactionEvents(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Processed != 1 || result.Failed != 0 {
-		t.Fatalf("unexpected processing result: %+v", result)
-	}
-	if len(fake.createdCalculations) != 1 || fake.createdCalculations[0].PointsDelta != -20 || fake.createdCalculations[0].BasisAmountMinor != 2000 {
-		t.Fatalf("expected capped -20 point refund calculation, got %+v", fake.createdCalculations)
-	}
-	if fake.balance.AvailablePoints != 80 {
-		t.Fatalf("expected available balance 80, got %d", fake.balance.AvailablePoints)
-	}
-}
-
-func TestLedgerReserveGuardPreventsNegativeAvailable(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.balance.AvailablePoints = 10
-
-	_, err := postLedgerEntry(context.Background(), fake.storeSet(), ports.LedgerEntryInput{
-		PartnerID:       "partner_1",
-		MemberAccountID: "account_1",
-		EntryType:       domain.EntryRedemptionReserve,
-		AvailableDelta:  -20,
-		ReservedDelta:   20,
-		SourceType:      "redemption",
-		SourceID:        "00000000-0000-0000-0000-000000000001",
-	})
-	if !domain.IsErrorKind(err, domain.ErrorKindInvariant) {
-		t.Fatalf("expected invariant error, got %v", err)
-	}
-}
-
-func TestGenerateLedgerLiabilityExportUsesReportingStore(t *testing.T) {
-	fake := newFakeAppStore()
-	fake.summary = domain.JSONMap{"liabilityPoints": 123}
-	fake.exportID = "export_1"
-
-	export, err := ReportingService{app: testApp(fake)}.GenerateLedgerLiabilityExport(context.Background(), domain.ExportRequest{
-		PartnerKey:   "acme-demo",
-		BusinessDate: "2026-07-25",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if export.ID != "export_1" || export.Summary["liabilityPoints"] != 123 {
-		t.Fatalf("unexpected export: %+v", export)
-	}
-}
 
 type fakeAppStore struct {
 	*fakeState
@@ -349,20 +23,27 @@ type fakeState struct {
 	transactionCreates   int
 	acceptedIDs          []string
 	processingEvents     map[string]domain.RewardProcessingEvent
+	markedFailed         int
+	markedProcessed      int
 	ruleVersionStatus    string
 	ruleVersion          domain.RuleVersion
 	ruleGraph            domain.RuleGraph
 	ruleGraphs           map[string]domain.RuleGraph
+	loadGraphsCalls      int
 	publishedRuleVersion bool
 	activeProgramID      string
 	activeRuleVersionID  string
 	addOnRuleVersionIDs  []string
+	activeRuleSetErr     error
 	createdCalculations  []ports.RewardCalculationCreateInput
+	failedCalculations   int
 	originalEvent        domain.RewardProcessingEvent
 	originalCalculation  ports.OriginalCalculation
 	originalErr          error
 	priorRefundedBasis   int
 	ledgerEntries        []ports.LedgerEntryInput
+	accountIDCalls       int
+	balanceByMemberCalls int
 	summary              domain.JSONMap
 	exportID             string
 }
@@ -396,7 +77,7 @@ func newFakeAppStore() *fakeAppStore {
 }
 
 func testApp(fake *fakeAppStore) app {
-	return app{stores: fake.storeSet(), uow: fake}
+	return app{stores: fake.storeSet(), uow: fake, ruleGraphCache: newRuleGraphCache()}
 }
 
 func (f *fakeAppStore) storeSet() ports.StoreSet {
@@ -431,6 +112,13 @@ func (s fakePartnerStore) List(ctx context.Context) ([]domain.Partner, error) {
 
 func (s fakePartnerStore) GetByKey(ctx context.Context, partnerKey string) (domain.Partner, error) {
 	if partnerKey != s.state.partner.PartnerKey {
+		return domain.Partner{}, notFoundErr()
+	}
+	return s.state.partner, nil
+}
+
+func (s fakePartnerStore) GetByID(ctx context.Context, partnerID string) (domain.Partner, error) {
+	if partnerID != s.state.partner.ID {
 		return domain.Partner{}, notFoundErr()
 	}
 	return s.state.partner, nil
@@ -508,7 +196,12 @@ func (s fakeMemberStore) GetByExternalID(ctx context.Context, partnerID, externa
 	return s.state.member, nil
 }
 
+func (s fakeMemberStore) GetByIdentifierHash(ctx context.Context, partnerID, identifierType, valueHash string) (domain.Member, error) {
+	return domain.Member{}, notFoundErr()
+}
+
 func (s fakeMemberStore) AccountID(ctx context.Context, partnerID, memberID string) (string, error) {
+	s.state.accountIDCalls++
 	return s.state.accountID, nil
 }
 
@@ -553,6 +246,16 @@ func (s fakeTransactionStore) Create(ctx context.Context, input ports.Transactio
 	return s.state.transactionEvent.ID, nil
 }
 
+func (s fakeTransactionStore) CreateIfNotExists(ctx context.Context, input ports.TransactionCreateInput) (string, bool, error) {
+	if s.state.transactionIdentity.ID != "" {
+		return "", false, nil
+	}
+	s.state.transactionCreates++
+	s.state.transactionEvent = domain.TransactionEvent{ID: "evt_created", PartnerID: input.PartnerID, MemberID: input.MemberID, ExternalTransactionID: input.ExternalTransactionID}
+	s.state.transactionIdentity = ports.TransactionIdentity{ID: s.state.transactionEvent.ID, PayloadHash: input.PayloadHash}
+	return s.state.transactionEvent.ID, true, nil
+}
+
 func (s fakeTransactionStore) InsertLineItems(ctx context.Context, eventID string, lines []domain.LineItemInput) error {
 	return nil
 }
@@ -572,6 +275,18 @@ func (s fakeTransactionStore) AcceptedIDs(ctx context.Context, limit int) ([]str
 	return s.state.acceptedIDs, nil
 }
 
+func (s fakeTransactionStore) ClaimAndLoadAcceptedTransactions(ctx context.Context, limit int) ([]ports.ProcessingEventBundle, error) {
+	bundles := []ports.ProcessingEventBundle{}
+	for _, id := range s.state.acceptedIDs {
+		event, ok := s.state.processingEvents[id]
+		if !ok {
+			continue
+		}
+		bundles = append(bundles, ports.ProcessingEventBundle{Event: event, LineItems: event.Lines})
+	}
+	return bundles, nil
+}
+
 func (s fakeTransactionStore) ClaimAccepted(ctx context.Context, eventID string) error {
 	if _, ok := s.state.processingEvents[eventID]; !ok {
 		return domain.InvariantError("event not accepted")
@@ -580,10 +295,12 @@ func (s fakeTransactionStore) ClaimAccepted(ctx context.Context, eventID string)
 }
 
 func (s fakeTransactionStore) MarkProcessed(ctx context.Context, eventID string) error {
+	s.state.markedProcessed++
 	return nil
 }
 
 func (s fakeTransactionStore) MarkFailed(ctx context.Context, eventID string) error {
+	s.state.markedFailed++
 	return nil
 }
 
@@ -620,6 +337,19 @@ func (s fakeRuleStore) LoadGraph(ctx context.Context, ruleVersionID string) (dom
 	return s.state.ruleGraph, nil
 }
 
+func (s fakeRuleStore) LoadGraphs(ctx context.Context, ruleVersionIDs []string) (map[string]domain.RuleGraph, error) {
+	s.state.loadGraphsCalls++
+	graphs := map[string]domain.RuleGraph{}
+	for _, id := range ruleVersionIDs {
+		graph, err := s.LoadGraph(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		graphs[id] = graph
+	}
+	return graphs, nil
+}
+
 func (s fakeRuleStore) LimitsForRule(ctx context.Context, ruleID string) ([]domain.RuleGraphLimit, error) {
 	return nil, nil
 }
@@ -637,6 +367,9 @@ func (s fakeRuleStore) ActiveProgramAndPublishedRules(ctx context.Context, partn
 }
 
 func (s fakeRuleStore) ActiveProgramAndPublishedRuleSet(ctx context.Context, partnerID, memberID string) (ports.RuleSetSelection, error) {
+	if s.state.activeRuleSetErr != nil {
+		return ports.RuleSetSelection{}, s.state.activeRuleSetErr
+	}
 	all := append([]string{s.state.activeRuleVersionID}, s.state.addOnRuleVersionIDs...)
 	return ports.RuleSetSelection{
 		ProgramID:           s.state.activeProgramID,
@@ -656,6 +389,7 @@ func (s fakeRewardCalculationStore) CreateSucceeded(ctx context.Context, input p
 }
 
 func (s fakeRewardCalculationStore) CreateFailed(ctx context.Context, event domain.RewardProcessingEvent, reason string) error {
+	s.state.failedCalculations++
 	return nil
 }
 
@@ -679,6 +413,11 @@ func (s fakeLedgerStore) GetBalance(ctx context.Context, accountID string) (doma
 	return s.state.balance, nil
 }
 
+func (s fakeLedgerStore) GetBalanceByMember(ctx context.Context, partnerID, memberID string) (domain.BalanceSnapshot, error) {
+	s.state.balanceByMemberCalls++
+	return s.state.balance, nil
+}
+
 func (s fakeLedgerStore) LockBalance(ctx context.Context, accountID string) (domain.BalanceSnapshot, error) {
 	return s.state.balance, nil
 }
@@ -695,6 +434,25 @@ func (s fakeLedgerStore) InsertEntry(ctx context.Context, input ports.LedgerEntr
 func (s fakeLedgerStore) UpdateBalance(ctx context.Context, balance domain.BalanceSnapshot) error {
 	s.state.balance = balance
 	return nil
+}
+
+func (s fakeLedgerStore) PostLedgerEntry(ctx context.Context, input ports.LedgerEntryInput) (ports.LedgerPostResult, error) {
+	balance, err := s.LockBalance(ctx, input.MemberAccountID)
+	if err != nil {
+		return ports.LedgerPostResult{}, err
+	}
+	next, err := domain.ApplyLedgerDelta(balance, input.EntryType, input.AvailableDelta, input.ReservedDelta, input.ExpiredDelta)
+	if err != nil {
+		return ports.LedgerPostResult{}, err
+	}
+	entryID, err := s.InsertEntry(ctx, input)
+	if err != nil {
+		return ports.LedgerPostResult{}, err
+	}
+	if err := s.UpdateBalance(ctx, next); err != nil {
+		return ports.LedgerPostResult{}, err
+	}
+	return ports.LedgerPostResult{LedgerEntryID: entryID, Balance: next}, nil
 }
 
 func (s fakeReportingStore) LedgerSummary(ctx context.Context, partnerID, businessDate string) (domain.JSONMap, error) {

@@ -2,108 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0; url=./page-flow.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Paisa Partner Admin Wireframes</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <title>Paisa Page Flow</title>
   </head>
   <body>
-    <div class="shell">
-      <aside class="side">
-        <div class="brand">
-          <img src="../paisa-wordmark.png" alt="Paisa" />
-          <strong>Wireframes</strong>
-          <span>Non-functional UX flow</span>
-        </div>
-        <nav class="nav">
-          <a class="active" href="./index.html"><strong>Flow map</strong><small>Portal navigation</small></a>
-          <a href="./login.html"><strong>Login</strong><small>Default partner</small></a>
-          <a href="./dashboard.html"><strong>Dashboard</strong><small>Operating overview</small></a>
-          <a href="./programs.html"><strong>Programs</strong><small>Program detail</small></a>
-          <a href="./rule-studio.html"><strong>Rule Studio</strong><small>Rules and packages</small></a>
-          <a href="./members.html"><strong>Members</strong><small>Moves and add-ons</small></a>
-          <a href="./activity.html"><strong>Activity</strong><small>Earned transactions</small></a>
-        </nav>
-      </aside>
-      <main class="main">
-        <header class="header">
-          <div>
-            <p class="label">Partner Admin Portal</p>
-            <h1>Navigation and page-flow wireframes</h1>
-            <p>Static HTML diagrams for reviewing how the admin portal should flow before implementation details are finalized.</p>
-          </div>
-          <div class="pill-row">
-            <span class="pill">Static</span>
-            <span class="pill">No app logic</span>
-            <span class="pill">HTML only</span>
-          </div>
-        </header>
-
-        <section class="panel">
-          <div class="section-intro">
-            <p class="label">Diagram</p>
-            <h2>Dedicated page-flow design</h2>
-            <p class="muted">Open the full map as a Mermaid-style diagram with a copyable source definition.</p>
-          </div>
-          <div class="actions">
-            <a class="button" href="./page-flow.html">Open page-flow design</a>
-            <a class="button secondary" href="./page-flow.mmd">Open Mermaid source</a>
-          </div>
-        </section>
-
-        <section class="panel flow">
-          <h2>Primary user flow</h2>
-          <div class="portal-flow-diagram" aria-label="Page flow diagram">
-            <div class="flow-lanes">
-              <div class="lane-label">Entry</div>
-              <a class="flow-node primary" href="./login.html"><strong>Login</strong><span>Default partner session starts here.</span></a>
-              <a class="flow-node primary" href="./dashboard.html"><strong>Dashboard</strong><span>Portfolio health, summaries, and next actions.</span></a>
-              <a class="flow-node action" href="./programs.html"><strong>Programs</strong><span>Create or select a rewards program.</span></a>
-              <a class="flow-node action" href="./rule-studio.html"><strong>Rule Studio</strong><span>Edit base rules or member add-on packages.</span></a>
-              <a class="flow-node end" href="./programs.html"><strong>Publish rules</strong><span>Return to program detail after publish.</span></a>
-
-              <div class="lane-label">Member ops</div>
-              <div class="flow-node no-arrow"></div>
-              <a class="flow-node primary flow-connector-up" href="./dashboard.html"><strong>Dashboard actions</strong><span>Open members, programs, activity, or rule studio.</span></a>
-              <a class="flow-node action" href="./members.html"><strong>Members</strong><span>Review active enrollment and balance.</span></a>
-              <a class="flow-node action" href="./members.html"><strong>Move program</strong><span>Choose target program, effective date, and reason.</span></a>
-              <a class="flow-node end audit" href="./activity.html"><strong>Audit result</strong><span>Future transactions show new program context.</span></a>
-
-              <div class="lane-label">Add-ons</div>
-              <div class="flow-node no-arrow"></div>
-              <a class="flow-node primary flow-connector-up" href="./dashboard.html"><strong>Needs package?</strong><span>Dashboard flags members with add-ons and validation health.</span></a>
-              <a class="flow-node action" href="./programs.html"><strong>Rule Packages tab</strong><span>Create reusable supplemental packages under a program.</span></a>
-              <a class="flow-node action" href="./rule-studio.html"><strong>Package graph</strong><span>Scope is member add-on package.</span></a>
-              <a class="flow-node end" href="./members.html"><strong>Assign package</strong><span>Apply published add-on to selected member.</span></a>
-
-              <div class="lane-label">Audit</div>
-              <div class="flow-node no-arrow"></div>
-              <a class="flow-node primary" href="./dashboard.html"><strong>Recent activity</strong><span>Compact point-changing events.</span></a>
-              <a class="flow-node audit" href="./activity.html"><strong>Activity</strong><span>Filter point events by member, program, rule source.</span></a>
-              <a class="flow-node audit" href="./members.html"><strong>Member history</strong><span>Trace earned points back to base rules and add-ons.</span></a>
-              <a class="flow-node end primary" href="./dashboard.html"><strong>Back to dashboard</strong><span>Return to summaries and operational health.</span></a>
-            </div>
-            <div class="flow-note">
-              <span class="pill">Primary path</span>
-              <span class="pill">Member move path</span>
-              <span class="pill">Rule add-on path</span>
-              <span class="pill">Audit loop</span>
-            </div>
-          </div>
-          <div class="flow-row">
-            <a class="flow-card" href="./login.html"><span>01</span><strong>Login</strong><small>Partner lands in default Acme workspace.</small></a>
-            <a class="flow-card" href="./dashboard.html"><span>02</span><strong>Dashboard</strong><small>Summaries, health, next actions.</small></a>
-            <a class="flow-card" href="./programs.html"><span>03</span><strong>Programs</strong><small>Base rules, packages, enrollments.</small></a>
-            <a class="flow-card" href="./rule-studio.html"><span>04</span><strong>Rule Studio</strong><small>Edit base rules or add-on packages.</small></a>
-            <a class="flow-card" href="./members.html"><span>05</span><strong>Members</strong><small>Move program or assign add-ons.</small></a>
-          </div>
-        </section>
-
-        <section class="grid three">
-          <a class="page-card" href="./dashboard.html"><span>Dashboard</span><strong>Summaries first</strong><small>High-level health and operational actions dominate the first screen.</small></a>
-          <a class="page-card" href="./programs.html"><span>Programs</span><strong>Program relationship hub</strong><small>Base rules, reusable packages, enrollments, and activity live together.</small></a>
-          <a class="page-card" href="./activity.html"><span>Activity</span><strong>Compact event stream</strong><small>Transactions remain scannable and drill-down oriented.</small></a>
-        </section>
-      </main>
-    </div>
+    <p><a href="./page-flow.html">Open the Paisa page-flow diagram</a></p>
   </body>
 </html>

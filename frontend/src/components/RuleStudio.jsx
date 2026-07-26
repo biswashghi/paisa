@@ -2,7 +2,7 @@ import { createRule, createRulesTemplate, rulesToPayload, validateProgramRules }
 import StatusPill from "./StatusPill.jsx";
 import { useState } from "react";
 
-export default function RuleStudio({ program, onUpdateProgram, onPublishProgramRules, onCreateRulePackage, onUpdateRulePackage, onPublishRulePackage }) {
+export default function RuleStudio({ program, onUpdateProgram, onPublishProgramRules, onCreateRulePackage, onUpdateRulePackage, onPublishRulePackage, embedded = false }) {
   const [appliesTo, setAppliesTo] = useState("program_base");
   const [selectedPackageId, setSelectedPackageId] = useState(program.rulePackages?.[0]?.id || "");
   const selectedPackage = (program.rulePackages || []).find((pkg) => pkg.id === selectedPackageId) || program.rulePackages?.[0];
@@ -57,23 +57,32 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
 
   return (
     <section className="view-stack">
-      <div className="view-header">
-        <div>
-          <p className="eyebrow">Rule Studio</p>
-          <h2>{editingPackage ? selectedPackage.name : program.name}</h2>
-          <div className="studio-scope-line">
-            <span>{appliesTo === "program_base" ? "Program-wide base graph" : "Reusable member add-on package"}</span>
-            <span>{group?.rules.length || 0} rules</span>
-            <span>{issues.length ? `${issues.length} issues` : "Local validation clear"}</span>
+      {!embedded ? (
+        <div className="view-header">
+          <div>
+            <p className="eyebrow">Rules</p>
+            <h2>{editingPackage ? selectedPackage.name : program.name}</h2>
+            <div className="studio-scope-line">
+              <span>{appliesTo === "program_base" ? "Base graph" : "Member add-on"}</span>
+              <span>{group?.rules.length || 0} rules</span>
+              <span>{issues.length ? `${issues.length} issues` : "Valid"}</span>
+            </div>
+          </div>
+          <div className="button-row">
+            <button type="button" onClick={() => updateRules(createRulesTemplate("max_of"))}>Max-of</button>
+            <button type="button" onClick={() => updateRules(createRulesTemplate("stack"))}>Stack</button>
+            <button type="button" onClick={() => updateRules(createRulesTemplate("waterfall"))}>Waterfall</button>
+            <button className="primary" type="button" onClick={editingPackage ? publishPackage : publish} disabled={issues.length > 0}>Publish</button>
           </div>
         </div>
+      ) : (
         <div className="button-row">
-          <button type="button" onClick={() => updateRules(createRulesTemplate("max_of"))}>Max-of template</button>
-          <button type="button" onClick={() => updateRules(createRulesTemplate("stack"))}>Stack template</button>
-          <button type="button" onClick={() => updateRules(createRulesTemplate("waterfall"))}>Waterfall template</button>
+          <button type="button" onClick={() => updateRules(createRulesTemplate("max_of"))}>Max-of</button>
+          <button type="button" onClick={() => updateRules(createRulesTemplate("stack"))}>Stack</button>
+          <button type="button" onClick={() => updateRules(createRulesTemplate("waterfall"))}>Waterfall</button>
           <button className="primary" type="button" onClick={editingPackage ? publishPackage : publish} disabled={issues.length > 0}>Publish</button>
         </div>
-      </div>
+      )}
 
       <section className="panel spacious studio-control-bar">
         <div className="form-grid">
@@ -104,7 +113,7 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
         <section className="panel spacious rule-canvas-panel">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Visual graph</p>
+              <p className="eyebrow">Graph</p>
               <h3>{group?.name}</h3>
             </div>
             <StatusPill value={issues.length ? "Needs changes" : "Validated"} />
@@ -139,7 +148,7 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
         <aside className="panel spacious">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Configuration</p>
+              <p className="eyebrow">Config</p>
               <h3>Rule group</h3>
             </div>
           </div>
@@ -212,8 +221,8 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
       <section className="panel spacious">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">API payload preview</p>
-            <h3>Generated rule version request</h3>
+            <p className="eyebrow">API payload</p>
+            <h3>Rule version request</h3>
           </div>
         </div>
         <pre>{JSON.stringify({

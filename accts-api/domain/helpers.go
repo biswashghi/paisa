@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -120,6 +122,49 @@ func SanitizedTransactionPayload(body TransactionIngestRequest) JSONMap {
 func HashIdentifierValue(value string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(strings.ToLower(value))))
 	return fmt.Sprintf("%x", sum[:])
+}
+
+func HashSecret(value string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(value)))
+	return hex.EncodeToString(sum[:])
+}
+
+func GenerateToken(prefix string) string {
+	bytes := make([]byte, 24)
+	if _, err := rand.Read(bytes); err != nil {
+		return fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano())
+	}
+	return fmt.Sprintf("%s_%s", prefix, base64.RawURLEncoding.EncodeToString(bytes))
+}
+
+func NormalizeIdentifierValue(identifierType, value string) string {
+	value = strings.TrimSpace(value)
+	switch strings.ToLower(strings.TrimSpace(identifierType)) {
+	case "email":
+		return strings.ToLower(value)
+	case "phone":
+		digits := ""
+		for _, r := range value {
+			if r >= '0' && r <= '9' {
+				digits += string(r)
+			}
+		}
+		if len(digits) == 10 {
+			return "+1" + digits
+		}
+		if len(digits) == 11 && strings.HasPrefix(digits, "1") {
+			return "+" + digits
+		}
+		return digits
+	case "qr_code", "square_customer_id", "toast_guest_id":
+		return value
+	default:
+		return strings.ToLower(value)
+	}
+}
+
+func HashIdentifier(identifierType, value string) string {
+	return HashIdentifierValue(NormalizeIdentifierValue(identifierType, value))
 }
 
 func PeriodKey(period string, occurredAt time.Time) string {

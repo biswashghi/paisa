@@ -4,3 +4,4 @@ accts-api/accts-api
 .env.*
 !.env.example
 .DS_Store
+frontend/.visual-review/

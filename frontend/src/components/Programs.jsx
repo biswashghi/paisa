@@ -1,10 +1,29 @@
 import { useState } from "react";
+import Rewards from "./Rewards.jsx";
+import RuleStudio from "./RuleStudio.jsx";
 import StatusPill from "./StatusPill.jsx";
 
-const tabs = ["Base Rules", "Rule Packages", "Enrollments", "Earned Activity"];
+const tabs = ["Overview", "Rules", "Rewards", "Enrollments", "Activity"];
 
-export default function Programs({ programs, selectedProgramId, enrollments, transactions, onSelectProgram, onCreateProgram, onUpdateProgram, onCreateRulePackage }) {
-  const [activeTab, setActiveTab] = useState("Base Rules");
+export default function Programs({
+  programs,
+  selectedProgramId,
+  enrollments,
+  transactions,
+  catalogItems,
+  redemptions,
+  campaigns,
+  onSelectProgram,
+  onCreateProgram,
+  onUpdateProgram,
+  onCreateRulePackage,
+  onUpdateRulePackage,
+  onPublishProgramRules,
+  onPublishRulePackage,
+  onCreateCatalogItem,
+  onCreateCampaign,
+}) {
+  const [activeTab, setActiveTab] = useState("Overview");
   const selected = programs.find((program) => program.id === selectedProgramId) || programs[0];
   if (!selected) {
     return (
@@ -29,24 +48,23 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
     <section className="view-stack">
       <div className="view-header">
         <div>
-          <p className="eyebrow">Program management</p>
-          <h2>Programs connect base rules, add-on packages, enrolled members, and earned activity.</h2>
+          <p className="eyebrow">Programs</p>
+          <h2>Program workspace</h2>
         </div>
         <button className="primary" type="button" onClick={onCreateProgram}>Create program</button>
       </div>
 
-      <div className="split-layout">
-        <section className="panel list-panel">
-          {programs.map((program) => (
-            <button className={program.id === selectedProgramId ? "list-item selected" : "list-item"} key={program.id} type="button" onClick={() => onSelectProgram(program.id)}>
-              <strong>{program.name}</strong>
-              <span>{program.tierCode} / {enrollments.filter((enrollment) => enrollment.programId === program.id).length} active demo members</span>
-              <StatusPill value={program.status} />
-            </button>
-          ))}
-        </section>
+      <section className="panel program-selector-strip">
+        {programs.map((program) => (
+          <button className={program.id === selectedProgramId ? "list-item selected" : "list-item"} key={program.id} type="button" onClick={() => onSelectProgram(program.id)}>
+            <strong>{program.name}</strong>
+            <span>{program.tierCode} / {enrollments.filter((enrollment) => enrollment.programId === program.id).length} active demo members</span>
+            <StatusPill value={program.status} />
+          </button>
+        ))}
+      </section>
 
-        <section className="panel spacious">
+      <section className="panel spacious">
           <div className="program-command-card">
             <div>
               <p className="eyebrow">Selected program</p>
@@ -79,24 +97,21 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
             ))}
           </div>
 
-          {activeTab === "Base Rules" ? (
-            <div className="rule-summary-list rule-card-grid">
-              {selected.rules.groups.map((group) => (
-                <article key={group.id}>
-                  <div><strong>{group.name}</strong><StatusPill value={group.status} /></div>
-                  <span>Strategy: {group.strategy}</span>
-                  <small>{group.rules.map((rule) => `${rule.name}: ${rule.type === "points_per_dollar" ? `${rule.pointsPerDollar} pt / $` : `${rule.points} pts`}`).join(" | ")}</small>
-                </article>
-              ))}
-            </div>
-          ) : null}
-
-          {activeTab === "Rule Packages" ? (
-            <div className="rule-summary-list">
+          {activeTab === "Overview" ? (
+            <div className="program-overview-grid">
+              <div className="rule-summary-list rule-card-grid">
+                {selected.rules.groups.map((group) => (
+                  <article key={group.id}>
+                    <div><strong>{group.name}</strong><StatusPill value={group.status} /></div>
+                    <span>Strategy: {group.strategy}</span>
+                    <small>{group.rules.map((rule) => `${rule.name}: ${rule.type === "points_per_dollar" ? `${rule.pointsPerDollar} pt / $` : `${rule.points} pts`}`).join(" | ")}</small>
+                  </article>
+                ))}
+              </div>
               <div className="package-toolbar">
                 <div>
-                  <strong>Reusable member add-ons</strong>
-                  <span>Publish packages here, then assign them from member detail.</span>
+                  <strong>Add-on packages</strong>
+                  <span>Assign published packages from member detail.</span>
                 </div>
                 <button type="button" onClick={() => onCreateRulePackage(selected.id)}>Create member add-on package</button>
               </div>
@@ -110,6 +125,30 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
                 ))}
               </div>
             </div>
+          ) : null}
+
+          {activeTab === "Rules" ? (
+            <RuleStudio
+              program={selected}
+              embedded
+              onUpdateProgram={onUpdateProgram}
+              onPublishProgramRules={onPublishProgramRules}
+              onCreateRulePackage={onCreateRulePackage}
+              onUpdateRulePackage={onUpdateRulePackage}
+              onPublishRulePackage={onPublishRulePackage}
+            />
+          ) : null}
+
+          {activeTab === "Rewards" ? (
+            <Rewards
+              catalogItems={catalogItems}
+              redemptions={redemptions}
+              campaigns={campaigns}
+              programs={programs}
+              onCreateCatalogItem={onCreateCatalogItem}
+              onCreateCampaign={onCreateCampaign}
+              embedded
+            />
           ) : null}
 
           {activeTab === "Enrollments" ? (
@@ -126,7 +165,7 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
             </div>
           ) : null}
 
-          {activeTab === "Earned Activity" ? (
+          {activeTab === "Activity" ? (
             <div className="compact-table program-activity-table">
               {programTransactions.map((transaction) => (
                 <div className="table-row" key={transaction.id}>
@@ -140,8 +179,7 @@ export default function Programs({ programs, selectedProgramId, enrollments, tra
               ))}
             </div>
           ) : null}
-        </section>
-      </div>
+      </section>
     </section>
   );
 }

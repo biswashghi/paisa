@@ -9,93 +9,123 @@ import (
 )
 
 func (s RuleStore) LoadGraph(ctx context.Context, ruleVersionID string) (domain.RuleGraph, error) {
-	groupRows, err := s.q.QueryContext(ctx, `
-		SELECT id, resolution_strategy, priority
-		FROM paisa.rule_groups
-		WHERE rule_version_id = $1 AND status = 'active'
-		ORDER BY priority`, ruleVersionID)
+	graphs, err := s.LoadGraphs(ctx, []string{ruleVersionID})
 	if err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return domain.RuleGraph{}, err
+	}
+	graph, ok := graphs[ruleVersionID]
+	if !ok {
+		return domain.RuleGraph{}, domain.AppError{Kind: domain.ErrorKindNotFound, Message: "rule graph not found"}
+	}
+	return graph, nil
+}
+
+func (s RuleStore) LoadGraphs(ctx context.Context, ruleVersionIDs []string) (map[string]domain.RuleGraph, error) {
+	graphs := map[string]domain.RuleGraph{}
+	if len(ruleVersionIDs) == 0 {
+		return graphs, nil
+	}
+	for _, id := range ruleVersionIDs {
+		graphs[id] = domain.RuleGraph{}
+	}
+
+	groupRows, err := s.q.QueryContext(ctx, `
+		SELECT id, rule_version_id, resolution_strategy, priority
+		FROM paisa.rule_groups
+		WHERE rule_version_id = ANY($1) AND status = 'active'
+		ORDER BY rule_version_id, priority`, pqArray(ruleVersionIDs))
+	if err != nil {
+		return nil, AppErrorFromDB(err)
 	}
 	defer groupRows.Close()
-	groups := []domain.RuleGraphGroup{}
 	for groupRows.Next() {
+		var versionID string
 		var group domain.RuleGraphGroup
-		if err := groupRows.Scan(&group.ID, &group.Strategy, &group.Priority); err != nil {
-			return domain.RuleGraph{}, AppErrorFromDB(err)
+		if err := groupRows.Scan(&group.ID, &versionID, &group.Strategy, &group.Priority); err != nil {
+			return nil, AppErrorFromDB(err)
 		}
-		groups = append(groups, group)
+		graph := graphs[versionID]
+		graph.Groups = append(graph.Groups, group)
+		graphs[versionID] = graph
 	}
 	if err := groupRows.Err(); err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return nil, AppErrorFromDB(err)
 	}
 
 	ruleRows, err := s.q.QueryContext(ctx, `
-		SELECT er.id, er.rule_group_id, er.rule_key, er.rule_type, er.priority, er.eligibility_config, er.formula_config
+		SELECT rg.rule_version_id, er.id, er.rule_group_id, er.rule_key, er.rule_type, er.priority, er.eligibility_config, er.formula_config
 		FROM paisa.earning_rules er
 		JOIN paisa.rule_groups rg ON rg.id = er.rule_group_id
-		WHERE rg.rule_version_id = $1 AND er.status = 'active'
-		ORDER BY er.priority`, ruleVersionID)
+		WHERE rg.rule_version_id = ANY($1) AND er.status = 'active'
+		ORDER BY rg.rule_version_id, er.priority`, pqArray(ruleVersionIDs))
 	if err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return nil, AppErrorFromDB(err)
 	}
 	defer ruleRows.Close()
-	rules := []domain.RuleGraphRule{}
 	for ruleRows.Next() {
+		var versionID string
 		var rule domain.RuleGraphRule
 		var eligibility, formula []byte
-		if err := ruleRows.Scan(&rule.ID, &rule.GroupID, &rule.RuleKey, &rule.RuleType, &rule.Priority, &eligibility, &formula); err != nil {
-			return domain.RuleGraph{}, AppErrorFromDB(err)
+		if err := ruleRows.Scan(&versionID, &rule.ID, &rule.GroupID, &rule.RuleKey, &rule.RuleType, &rule.Priority, &eligibility, &formula); err != nil {
+			return nil, AppErrorFromDB(err)
 		}
 		rule.Eligibility = scanJSON(eligibility)
 		rule.Formula = scanJSON(formula)
-		rules = append(rules, rule)
+		graph := graphs[versionID]
+		graph.Rules = append(graph.Rules, rule)
+		graphs[versionID] = graph
 	}
 	if err := ruleRows.Err(); err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return nil, AppErrorFromDB(err)
 	}
 
 	limitRows, err := s.q.QueryContext(ctx, `
-		SELECT rl.id, rl.rule_id, rl.scope, rl.period, COALESCE(rl.max_points, 0), COALESCE(rl.max_basis_amount_minor, 0)
+		SELECT rg.rule_version_id, rl.id, rl.rule_id, rl.scope, rl.period, COALESCE(rl.max_points, 0), COALESCE(rl.max_basis_amount_minor, 0)
 		FROM paisa.rule_limits rl
 		JOIN paisa.earning_rules er ON er.id = rl.rule_id
 		JOIN paisa.rule_groups rg ON rg.id = er.rule_group_id
-		WHERE rg.rule_version_id = $1 AND rl.status = 'active'`, ruleVersionID)
+		WHERE rg.rule_version_id = ANY($1) AND rl.status = 'active'
+		ORDER BY rg.rule_version_id, rl.created_at`, pqArray(ruleVersionIDs))
 	if err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return nil, AppErrorFromDB(err)
 	}
 	defer limitRows.Close()
-	limits := []domain.RuleGraphLimit{}
 	for limitRows.Next() {
+		var versionID string
 		var limit domain.RuleGraphLimit
-		if err := limitRows.Scan(&limit.ID, &limit.RuleID, &limit.Scope, &limit.Period, &limit.MaxPoints, &limit.MaxBasisAmountMinor); err != nil {
-			return domain.RuleGraph{}, AppErrorFromDB(err)
+		if err := limitRows.Scan(&versionID, &limit.ID, &limit.RuleID, &limit.Scope, &limit.Period, &limit.MaxPoints, &limit.MaxBasisAmountMinor); err != nil {
+			return nil, AppErrorFromDB(err)
 		}
-		limits = append(limits, limit)
+		graph := graphs[versionID]
+		graph.Limits = append(graph.Limits, limit)
+		graphs[versionID] = graph
 	}
 	if err := limitRows.Err(); err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return nil, AppErrorFromDB(err)
 	}
 
 	depRows, err := s.q.QueryContext(ctx, `
-		SELECT rd.rule_id, rd.depends_on_rule_id, rd.dependency_type
+		SELECT rg.rule_version_id, rd.rule_id, rd.depends_on_rule_id, rd.dependency_type
 		FROM paisa.rule_dependencies rd
 		JOIN paisa.earning_rules er ON er.id = rd.rule_id
 		JOIN paisa.rule_groups rg ON rg.id = er.rule_group_id
-		WHERE rg.rule_version_id = $1`, ruleVersionID)
+		WHERE rg.rule_version_id = ANY($1)
+		ORDER BY rg.rule_version_id, rd.created_at`, pqArray(ruleVersionIDs))
 	if err != nil {
-		return domain.RuleGraph{}, AppErrorFromDB(err)
+		return nil, AppErrorFromDB(err)
 	}
 	defer depRows.Close()
-	deps := []domain.RuleGraphDependency{}
 	for depRows.Next() {
+		var versionID string
 		var dep domain.RuleGraphDependency
-		if err := depRows.Scan(&dep.RuleID, &dep.DependsOnRuleID, &dep.DependencyType); err != nil {
-			return domain.RuleGraph{}, AppErrorFromDB(err)
+		if err := depRows.Scan(&versionID, &dep.RuleID, &dep.DependsOnRuleID, &dep.DependencyType); err != nil {
+			return nil, AppErrorFromDB(err)
 		}
-		deps = append(deps, dep)
+		graph := graphs[versionID]
+		graph.Dependencies = append(graph.Dependencies, dep)
+		graphs[versionID] = graph
 	}
-	return domain.RuleGraph{Groups: groups, Rules: rules, Limits: limits, Dependencies: deps}, AppErrorFromDB(depRows.Err())
+	return graphs, AppErrorFromDB(depRows.Err())
 }
 
 func (s RuleStore) LimitsForRule(ctx context.Context, ruleID string) ([]domain.RuleGraphLimit, error) {

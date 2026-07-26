@@ -3,8 +3,9 @@ import { api } from "./api.js";
 import Dashboard from "./components/Dashboard.jsx";
 import Login from "./components/Login.jsx";
 import Members from "./components/Members.jsx";
+import Onboarding from "./components/Onboarding.jsx";
 import Programs from "./components/Programs.jsx";
-import RuleStudio from "./components/RuleStudio.jsx";
+import Settings from "./components/Settings.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import TopBar from "./components/TopBar.jsx";
 import Transactions from "./components/Transactions.jsx";
@@ -14,14 +15,24 @@ import { createRulesTemplate, rulesToPayload } from "./utils/rules.js";
 const saved = JSON.parse(localStorage.getItem("paisa.partnerPortal") || "null");
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(saved?.isLoggedIn));
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(saved?.isLoggedIn && localStorage.getItem("paisa.partnerPortal.token")));
   const [activeView, setActiveView] = useState("dashboard");
   const [partnerKey, setPartnerKey] = useState(saved?.partnerKey || defaultPartner.partnerKey);
   const [partner, setPartner] = useState(defaultPartner);
   const [programs, setPrograms] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [apiKeys, setApiKeys] = useState([]);
+  const [latestApiToken, setLatestApiToken] = useState("");
+  const [connections, setConnections] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [cashier, setCashier] = useState({ member: null, balance: {}, availableRewards: [], redemption: null });
   const [selectedProgramId, setSelectedProgramId] = useState(saved?.selectedProgramId || "");
+  const [theme, setTheme] = useState(saved?.theme || "porcelain");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -37,11 +48,17 @@ export default function App() {
     }
   }, [isLoggedIn]);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    persistSession({ theme });
+  }, [theme]);
+
   function persistSession(next = {}) {
     localStorage.setItem("paisa.partnerPortal", JSON.stringify({
       isLoggedIn,
       selectedProgramId,
       partnerKey,
+      theme,
       ...next,
     }));
   }
@@ -65,21 +82,24 @@ export default function App() {
   async function login(nextPartnerKey) {
     const key = nextPartnerKey || partnerKey;
     await runAction("Partner workspace loaded from API.", async () => {
-      let apiPartner;
-      try {
-        apiPartner = await api.getPartner(key);
-      } catch (err) {
-        apiPartner = await api.createPartner({ partnerKey: key, name: titleizePartnerKey(key) });
-      }
+      const loginResult = await api.login({
+        partnerKey: key,
+        email: `${key}@paisa.local`,
+        name: "Partner Admin",
+      });
+      api.setAuthToken(loginResult.token);
+      const apiPartner = loginResult.partner;
       setPartnerKey(key);
       setPartner(toUiPartner(apiPartner));
       setIsLoggedIn(true);
-      persistSession({ isLoggedIn: true, partnerKey: key });
+      persistSession({ isLoggedIn: true, partnerKey: key, token: true, theme });
       await loadWorkspace(key, apiPartner);
     });
   }
 
   function logout() {
+    api.logout().catch(() => {});
+    api.setAuthToken("");
     setIsLoggedIn(false);
     persistSession({ isLoggedIn: false });
   }
@@ -88,12 +108,13 @@ export default function App() {
     setLoading(true);
     setError("");
     try {
-      const apiPartner = existingPartner || await api.getPartner(key);
-      const apiPrograms = await api.listPrograms(key);
-      const apiMembers = await api.listMembers(key);
-      const programModels = await Promise.all(apiPrograms.map((program) => hydrateProgram(key, program)));
-      const memberModels = await Promise.all(apiMembers.map((member) => hydrateMember(key, member)));
-      const transactionModels = await hydrateTransactions(key, memberModels);
+      const ops = await loadMerchantOps();
+      const apiPartner = existingPartner || ops?.summary?.partner || partner;
+      const apiPrograms = await api.listPrograms();
+      const apiMembers = await api.listMembers();
+      const programModels = await Promise.all(apiPrograms.map((program) => hydrateProgram(program)));
+      const memberModels = await Promise.all(apiMembers.map((member) => hydrateMember(member)));
+      const transactionModels = await hydrateTransactions(memberModels);
 
       setPartner(toUiPartner(apiPartner));
       setPrograms(withProgramDerivedFields(programModels, memberModels, transactionModels));
@@ -111,10 +132,30 @@ export default function App() {
     }
   }
 
+  async function loadMerchantOps() {
+    const [summary, items, redemptionList, locationList, keys, connectionList, campaignList] = await Promise.all([
+      api.dashboardSummary().catch(() => null),
+      api.listCatalogItems().catch(() => []),
+      api.listRedemptions().catch(() => []),
+      api.listLocations().catch(() => []),
+      api.listApiKeys().catch(() => []),
+      api.listIntegrationConnections().catch(() => []),
+      api.listCampaigns().catch(() => []),
+    ]);
+    setDashboardSummary(summary);
+    setCatalogItems(items);
+    setRedemptions(redemptionList);
+    setLocations(locationList);
+    setApiKeys(keys);
+    setConnections(connectionList);
+    setCampaigns(campaignList);
+    return { summary, items, redemptionList, locationList, keys, connectionList, campaignList };
+  }
+
   async function createProgram() {
     await runAction("Program created in the API.", async () => {
       const index = programs.length + 1;
-      const program = await api.createProgram(partnerKey, {
+      const program = await api.createProgram({
         name: `Rewards Program ${index}`,
         tierCode: `tier-${index}`,
         priority: index,
@@ -132,8 +173,8 @@ export default function App() {
   async function publishProgramRules(programId, draftProgram) {
     await runAction("Rule version published through the backend validator.", async () => {
       const body = rulesToPayload(draftProgram);
-      const version = await api.createRuleVersion(partnerKey, programId, body);
-      await api.publishRuleVersion(partnerKey, programId, version.id);
+      const version = await api.createRuleVersion(programId, body);
+      await api.publishRuleVersion(programId, version.id);
       await loadWorkspace(partnerKey);
     });
   }
@@ -146,7 +187,7 @@ export default function App() {
         name: "New member add-on package",
         description: "Supplemental rule package assignable to selected members.",
       };
-      await api.createRulePackage(partnerKey, programId, body);
+      await api.createRulePackage(programId, body);
       await loadWorkspace(partnerKey);
       setActiveView("rules");
     });
@@ -168,15 +209,15 @@ export default function App() {
         name: rulePackage.name,
         description: rulePackage.description,
       };
-      const version = await api.createRulePackage(partnerKey, programId, body);
-      await api.publishRuleVersion(partnerKey, programId, version.id);
+      const version = await api.createRulePackage(programId, body);
+      await api.publishRuleVersion(programId, version.id);
       await loadWorkspace(partnerKey);
     });
   }
 
   async function moveEnrollment(memberId, programId, reason) {
     await runAction("Member program enrollment updated in the API.", async () => {
-      await api.updateEnrollment(partnerKey, memberId, {
+      await api.updateEnrollment(memberId, {
         programId,
         changeReason: reason || "Program move",
       });
@@ -186,7 +227,7 @@ export default function App() {
 
   async function assignRulePackage(memberId, packageId) {
     await runAction("Rule package assigned to member in the API.", async () => {
-      await api.createRuleAssignment(partnerKey, memberId, {
+      await api.createRuleAssignment(memberId, {
         ruleVersionId: packageId,
         reason: "Partner admin assignment",
       });
@@ -199,7 +240,7 @@ export default function App() {
     const assignmentId = enrollment?.addOnAssignments?.[packageId];
     if (!assignmentId) return;
     await runAction("Rule package assignment ended in the API.", async () => {
-      await api.updateRuleAssignment(partnerKey, memberId, assignmentId, {
+      await api.updateRuleAssignment(memberId, assignmentId, {
         status: "ended",
         reason: "Partner admin removal",
       });
@@ -210,31 +251,31 @@ export default function App() {
   async function seedDemoSuite() {
     await runAction("API demo partner suite created.", async () => {
       const suffix = Date.now();
-      const gold = await api.createProgram(partnerKey, { name: "Gold Rewards", tierCode: `gold-${suffix}`, priority: 1 });
-      const everyday = await api.createProgram(partnerKey, { name: "Everyday Rewards", tierCode: `everyday-${suffix}`, priority: 2 });
+      const gold = await api.createProgram({ name: "Gold Rewards", tierCode: `gold-${suffix}`, priority: 1 });
+      const everyday = await api.createProgram({ name: "Everyday Rewards", tierCode: `everyday-${suffix}`, priority: 2 });
 
-      const goldVersion = await api.createRuleVersion(partnerKey, gold.id, rulesToPayload({ rules: createRulesTemplate("max_of") }));
-      await api.publishRuleVersion(partnerKey, gold.id, goldVersion.id);
-      const everydayVersion = await api.createRuleVersion(partnerKey, everyday.id, rulesToPayload({ rules: createRulesTemplate("stack") }));
-      await api.publishRuleVersion(partnerKey, everyday.id, everydayVersion.id);
-      const addOn = await api.createRulePackage(partnerKey, gold.id, {
+      const goldVersion = await api.createRuleVersion(gold.id, rulesToPayload({ rules: createRulesTemplate("max_of") }));
+      await api.publishRuleVersion(gold.id, goldVersion.id);
+      const everydayVersion = await api.createRuleVersion(everyday.id, rulesToPayload({ rules: createRulesTemplate("stack") }));
+      await api.publishRuleVersion(everyday.id, everydayVersion.id);
+      const addOn = await api.createRulePackage(gold.id, {
         ...rulesToPayload({ rules: createRulesTemplate("stack") }),
         ruleSetKey: `vip_grocery_${suffix}`,
         name: "VIP grocery accelerator",
         description: "Adds extra earn for selected grocery-heavy members.",
       });
-      await api.publishRuleVersion(partnerKey, gold.id, addOn.id);
+      await api.publishRuleVersion(gold.id, addOn.id);
 
-      const member = await api.createMember(partnerKey, {
+      const member = await api.createMember({
         externalCustomerId: `member-${suffix}`,
         programId: gold.id,
         identifiers: [{ type: "email", value: `member-${suffix}@example.invalid` }],
       });
-      await api.createRuleAssignment(partnerKey, member.member.id, {
+      await api.createRuleAssignment(member.member.id, {
         ruleVersionId: addOn.id,
         reason: "Demo VIP assignment",
       });
-      const purchase = await api.ingestTransaction(partnerKey, {
+      const purchase = await api.ingestTransaction({
         externalTransactionId: `txn-${suffix}`,
         externalCustomerId: `member-${suffix}`,
         type: "purchase",
@@ -263,6 +304,107 @@ export default function App() {
     });
   }
 
+  async function resolveCashierMember(body) {
+    await runAction("Member resolved for cashier mode.", async () => {
+      const result = await api.resolveMember(body);
+      const [balance, rewards] = await Promise.all([
+        api.getPOSBalance(result.member.id).catch(() => ({})),
+        api.availableRewards(result.member.id).catch(() => []),
+      ]);
+      setCashier({ member: result.member, balance, availableRewards: rewards, redemption: null });
+      await loadWorkspace(partnerKey);
+    });
+  }
+
+  async function createCashierTransaction(body) {
+    await runAction("Manual purchase submitted.", async () => {
+      const event = await api.createManualTransaction(body);
+      await api.processTransactions();
+      const memberId = body.memberId || cashier.member?.id;
+      const balance = memberId ? await api.getPOSBalance(memberId).catch(() => cashier.balance) : cashier.balance;
+      setCashier((current) => ({ ...current, balance }));
+      await loadWorkspace(partnerKey);
+      return event;
+    });
+  }
+
+  async function createCatalogItem(body) {
+    await runAction("Reward catalog item created.", async () => {
+      await api.createCatalogItem(body);
+      await loadMerchantOps();
+    });
+  }
+
+  async function createRedemption(catalogItemId) {
+    if (!cashier.member) return;
+    await runAction("Reward reserved.", async () => {
+      const result = await api.createRedemption({ memberId: cashier.member.id, catalogItemId });
+      setCashier((current) => ({ ...current, redemption: result.redemption, balance: result.balance }));
+      await loadMerchantOps();
+    });
+  }
+
+  async function validateRedemption(redemptionId) {
+    await runAction("Reward validated.", async () => {
+      const result = await api.validateRedemption(redemptionId);
+      setCashier((current) => ({ ...current, redemption: result.redemption, balance: result.balance }));
+      await loadMerchantOps();
+    });
+  }
+
+  async function captureRedemption(redemptionId) {
+    await runAction("Reward captured.", async () => {
+      const result = await api.captureRedemption(redemptionId);
+      setCashier((current) => ({ ...current, redemption: result.redemption, balance: result.balance }));
+      await loadMerchantOps();
+      await loadWorkspace(partnerKey);
+    });
+  }
+
+  async function releaseRedemption(redemptionId) {
+    await runAction("Reward released.", async () => {
+      const result = await api.releaseRedemption(redemptionId);
+      setCashier((current) => ({ ...current, redemption: result.redemption, balance: result.balance }));
+      await loadMerchantOps();
+    });
+  }
+
+  async function createApiKey(name) {
+    await runAction("API key created.", async () => {
+      const result = await api.createApiKey({ name });
+      setLatestApiToken(result.token);
+      await loadMerchantOps();
+    });
+  }
+
+  async function startSquare() {
+    await runAction("Square import connection created.", async () => {
+      await api.startSquareOAuth();
+      await loadMerchantOps();
+    });
+  }
+
+  async function syncConnection(connectionId) {
+    await runAction("Integration sync marked complete.", async () => {
+      await api.syncIntegrationConnection(connectionId);
+      await loadMerchantOps();
+    });
+  }
+
+  async function createLocation(body) {
+    await runAction("Location created.", async () => {
+      await api.createLocation(body);
+      await loadMerchantOps();
+    });
+  }
+
+  async function createCampaign(body) {
+    await runAction("Campaign created.", async () => {
+      await api.createCampaign(body);
+      await loadMerchantOps();
+    });
+  }
+
   function selectProgram(programId) {
     setSelectedProgramId(programId);
     persistSession({ selectedProgramId: programId });
@@ -276,29 +418,19 @@ export default function App() {
     <div className="app-shell">
       <Sidebar activeView={activeView} onChangeView={setActiveView} />
       <div className="main-shell">
-        <TopBar partner={partner} selectedProgram={selectedProgram} apiBaseUrl={api.baseUrl} loading={loading} onRefresh={() => loadWorkspace(partnerKey)} onLogout={logout} />
+        <TopBar partner={partner} selectedProgram={selectedProgram} apiBaseUrl={api.baseUrl} loading={loading} theme={theme} onThemeChange={setTheme} onRefresh={() => loadWorkspace(partnerKey)} onLogout={logout} />
         <main className="content">
           {notice || error ? (
             <div className={error ? "notice-bar error" : "notice-bar"}>
               <span>{error || notice}</span>
             </div>
           ) : null}
-          {programs.length === 0 && !loading ? (
-            <section className="panel spacious empty-api-state">
-              <p className="eyebrow">API workspace</p>
-              <h2>No programs exist for {partner.partnerKey} yet.</h2>
-              <p>Create a program manually or seed a demo suite to exercise partner, program, rules, member, transaction, calculation, balance, and ledger APIs.</p>
-              <div className="button-row">
-                <button type="button" onClick={createProgram}>Create program</button>
-                <button className="primary" type="button" onClick={seedDemoSuite}>Seed API demo suite</button>
-              </div>
-            </section>
-          ) : null}
           {activeView === "dashboard" ? (
             <Dashboard
               programs={programs}
               enrollments={enrollments}
               transactions={transactions}
+              dashboardSummary={dashboardSummary}
               selectedProgramId={selectedProgramId}
               onSelectProgram={selectProgram}
               onCreateProgram={createProgram}
@@ -315,17 +447,15 @@ export default function App() {
               onUpdateProgram={updateProgram}
               enrollments={enrollments}
               transactions={transactions}
+              catalogItems={catalogItems}
+              redemptions={redemptions}
+              campaigns={campaigns}
               onCreateRulePackage={createRulePackage}
-            />
-          ) : null}
-          {activeView === "rules" && selectedProgram ? (
-            <RuleStudio
-              program={selectedProgram}
-              onUpdateProgram={updateProgram}
               onPublishProgramRules={publishProgramRules}
-              onCreateRulePackage={createRulePackage}
               onUpdateRulePackage={updateRulePackage}
               onPublishRulePackage={publishRulePackage}
+              onCreateCatalogItem={createCatalogItem}
+              onCreateCampaign={createCampaign}
             />
           ) : null}
           {activeView === "members" ? (
@@ -338,8 +468,40 @@ export default function App() {
               onRemoveRulePackage={removeRulePackage}
             />
           ) : null}
-          {activeView === "transactions" ? (
-            <Transactions transactions={transactions} programs={programs} />
+          {activeView === "activity" ? (
+            <Transactions transactions={transactions} programs={programs} redemptions={redemptions} />
+          ) : null}
+          {activeView === "setup" ? (
+            <Onboarding
+              partner={partner}
+              programs={programs}
+              transactions={transactions}
+              locations={locations}
+              dashboardSummary={dashboardSummary}
+              catalogItems={catalogItems}
+              cashier={cashier}
+              onCreateLocation={createLocation}
+              onCreateProgram={createProgram}
+              onChangeView={setActiveView}
+              onResolveMember={resolveCashierMember}
+              onCreateTransaction={createCashierTransaction}
+              onCreateRedemption={createRedemption}
+              onValidateRedemption={validateRedemption}
+              onCaptureRedemption={captureRedemption}
+              onReleaseRedemption={releaseRedemption}
+            />
+          ) : null}
+          {activeView === "settings" ? (
+            <Settings
+              locations={locations}
+              apiKeys={apiKeys}
+              latestApiToken={latestApiToken}
+              connections={connections}
+              onCreateLocation={createLocation}
+              onCreateApiKey={createApiKey}
+              onStartSquare={startSquare}
+              onSyncConnection={syncConnection}
+            />
           ) : null}
         </main>
       </div>
@@ -347,14 +509,14 @@ export default function App() {
   );
 }
 
-async function hydrateProgram(partnerKey, program) {
-  const versions = await api.listRuleVersions(partnerKey, program.id);
-  const packages = await api.listRulePackages(partnerKey, program.id);
+async function hydrateProgram(program) {
+  const versions = await api.listRuleVersions(program.id);
+  const packages = await api.listRulePackages(program.id);
   const baseVersions = versions.filter((version) => version.scope !== "member_add_on");
   const selectedBase = baseVersions.find((version) => version.status === "published") || baseVersions[0];
-  const review = selectedBase ? await api.getRuleVersionReview(partnerKey, program.id, selectedBase.id) : null;
+  const review = selectedBase ? await api.getRuleVersionReview(program.id, selectedBase.id) : null;
   const packageModels = await Promise.all(packages.map(async (pkg) => {
-    const packageReview = await api.getRuleVersionReview(partnerKey, program.id, pkg.id);
+    const packageReview = await api.getRuleVersionReview(program.id, pkg.id);
     return ruleVersionToPackage(pkg, packageReview);
   }));
   return {
@@ -371,9 +533,9 @@ async function hydrateProgram(partnerKey, program) {
   };
 }
 
-async function hydrateMember(partnerKey, member) {
+async function hydrateMember(member) {
   try {
-    const profile = await api.getRewardsProfile(partnerKey, member.id);
+    const profile = await api.getRewardsProfile(member.id);
     const addOnAssignments = {};
     profile.addOns.forEach((assignment) => {
       addOnAssignments[assignment.ruleVersionId] = assignment.id;
@@ -408,13 +570,13 @@ async function hydrateMember(partnerKey, member) {
   }
 }
 
-async function hydrateTransactions(partnerKey, members) {
+async function hydrateTransactions(members) {
   const memberNames = Object.fromEntries(members.map((member) => [member.id, member.member]));
-  const events = await api.listTransactions(partnerKey);
+  const events = await api.listTransactions();
   return Promise.all(events.map(async (event) => {
     let calculation = null;
     try {
-      calculation = await api.getCalculation(partnerKey, event.id);
+      calculation = await api.getCalculation(event.id);
     } catch (err) {
       calculation = null;
     }

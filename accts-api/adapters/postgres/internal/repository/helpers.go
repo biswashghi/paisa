@@ -9,6 +9,8 @@ import (
 
 	"accts-api/domain"
 	"accts-api/ports"
+
+	"github.com/lib/pq"
 )
 
 type Queryer interface {
@@ -18,6 +20,10 @@ type Queryer interface {
 }
 
 type PartnerStore struct {
+	q Queryer
+}
+
+type AuthStore struct {
 	q Queryer
 }
 
@@ -49,8 +55,29 @@ type ReportingStore struct {
 	q Queryer
 }
 
+type LocationStore struct {
+	q Queryer
+}
+
+type CatalogStore struct {
+	q Queryer
+}
+
+type RedemptionStore struct {
+	q Queryer
+}
+
+type IntegrationStore struct {
+	q Queryer
+}
+
+type CampaignStore struct {
+	q Queryer
+}
+
 func NewStoreSet(q Queryer) ports.StoreSet {
 	return ports.StoreSet{
+		Auth:               AuthStore{q: q},
 		Partners:           PartnerStore{q: q},
 		Programs:           ProgramStore{q: q},
 		Members:            MemberStore{q: q},
@@ -59,6 +86,11 @@ func NewStoreSet(q Queryer) ports.StoreSet {
 		RewardCalculations: RewardCalculationStore{q: q},
 		Ledger:             LedgerStore{q: q},
 		Reporting:          ReportingStore{q: q},
+		Locations:          LocationStore{q: q},
+		Catalog:            CatalogStore{q: q},
+		Redemptions:        RedemptionStore{q: q},
+		Integrations:       IntegrationStore{q: q},
+		Campaigns:          CampaignStore{q: q},
 	}
 }
 
@@ -114,4 +146,8 @@ func scanJSON(data []byte) domain.JSONMap {
 		return domain.JSONMap{"raw": string(data)}
 	}
 	return out
+}
+
+func pqArray(values []string) interface{} {
+	return pq.Array(values)
 }

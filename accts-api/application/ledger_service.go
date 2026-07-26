@@ -18,11 +18,7 @@ func (s LedgerService) GetBalance(ctx context.Context, partnerKey, memberID stri
 	if err != nil {
 		return domain.BalanceSnapshot{}, err
 	}
-	accountID, err := s.app.stores.Members.AccountID(ctx, partner.ID, memberID)
-	if err != nil {
-		return domain.BalanceSnapshot{}, err
-	}
-	return s.app.stores.Ledger.GetBalance(ctx, accountID)
+	return s.app.stores.Ledger.GetBalanceByMember(ctx, partner.ID, memberID)
 }
 
 func (s LedgerService) GetLedger(ctx context.Context, partnerKey, memberID string) ([]domain.LedgerEntry, error) {
@@ -80,20 +76,6 @@ func (s LedgerService) CreateAdjustment(ctx context.Context, partnerKey, memberI
 }
 
 func postLedgerEntry(ctx context.Context, stores ports.StoreSet, input ports.LedgerEntryInput) (string, error) {
-	balance, err := stores.Ledger.LockBalance(ctx, input.MemberAccountID)
-	if err != nil {
-		return "", err
-	}
-	next, err := domain.ApplyLedgerDelta(balance, input.EntryType, input.AvailableDelta, input.ReservedDelta, input.ExpiredDelta)
-	if err != nil {
-		return "", err
-	}
-	entryID, err := stores.Ledger.InsertEntry(ctx, input)
-	if err != nil {
-		return "", err
-	}
-	if err := stores.Ledger.UpdateBalance(ctx, next); err != nil {
-		return "", err
-	}
-	return entryID, nil
+	result, err := stores.Ledger.PostLedgerEntry(ctx, input)
+	return result.LedgerEntryID, err
 }

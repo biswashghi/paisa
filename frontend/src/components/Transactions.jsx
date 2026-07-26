@@ -1,7 +1,7 @@
 import SummaryCard from "./SummaryCard.jsx";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Transactions({ transactions, programs }) {
+export default function Transactions({ transactions, programs, redemptions = [] }) {
   const earned = transactions.filter((transaction) => transaction.points > 0).reduce((sum, transaction) => sum + transaction.points, 0);
   const burned = transactions.filter((transaction) => transaction.points < 0).reduce((sum, transaction) => sum + Math.abs(transaction.points), 0);
   const posted = transactions.filter((transaction) => transaction.status === "posted").length;
@@ -10,8 +10,8 @@ export default function Transactions({ transactions, programs }) {
     <section className="view-stack">
       <div className="view-header">
         <div>
-          <p className="eyebrow">Earned activity</p>
-          <h2>Transactions that changed points</h2>
+          <p className="eyebrow">Activity</p>
+          <h2>Transactions</h2>
         </div>
       </div>
       <div className="summary-grid">
@@ -22,8 +22,8 @@ export default function Transactions({ transactions, programs }) {
       <section className="panel spacious">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Activity ledger</p>
-            <h3>Compact event stream</h3>
+            <p className="eyebrow">Transactions</p>
+            <h3>Earn events</h3>
           </div>
         </div>
         <div className="compact-table activity-table">
@@ -47,6 +47,25 @@ export default function Transactions({ transactions, programs }) {
               <strong className={transaction.points >= 0 ? "good-text" : "bad-text"}>{transaction.points > 0 ? "+" : ""}{transaction.points}</strong>
               <span>{transaction.ruleSource || "Base program rules"}</span>
               <StatusPill value={transaction.status} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel spacious">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Redemptions</p>
+            <h3>Reward activity</h3>
+          </div>
+        </div>
+        <div className="compact-table redemption-table">
+          {redemptions.map((redemption) => (
+            <div className="table-row" key={redemption.id}>
+              <strong>{redemption.catalogItemName || redemption.catalogItemId}</strong>
+              <span>{redemption.code}</span>
+              <span>{redemption.pointsCost} pts</span>
+              <StatusPill value={redemption.status} />
             </div>
           ))}
         </div>

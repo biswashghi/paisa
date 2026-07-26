@@ -1,0 +1,57 @@
+services:
+  paisa-postgres:
+    image: postgres:15
+    container_name: paisa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PAISA_POSTGRES_DB:-project}
+      POSTGRES_USER: ${PAISA_POSTGRES_USER:-project}
+      POSTGRES_PASSWORD: ${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}
+    volumes:
+      - paisa-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  paisa-api:
+    build:
+      context: .
+      target: api
+    container_name: paisa-api
+    restart: unless-stopped
+    depends_on:
+      paisa-postgres:
+        condition: service_healthy
+    environment:
+      PAISA_DATABASE_URL: postgres://${PAISA_POSTGRES_USER:-project}:${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}@paisa-postgres:5432/${PAISA_POSTGRES_DB:-project}?sslmode=disable
+      PAISA_HTTP_ADDR: 0.0.0.0:8080
+      PAISA_SCHEMA_PATH: /app/db/schema.sql
+      PAISA_ALLOWED_ORIGINS: https://${PAISA_WEB_DOMAIN:?PAISA_WEB_DOMAIN is required}
+    ports:
+      - "127.0.0.1:${APP_API_HOST_PORT:-8791}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  paisa-web:
+    build:
+      context: .
+      target: web
+      args:
+        VITE_PAISA_API_URL: https://${PAISA_API_DOMAIN:?PAISA_API_DOMAIN is required}
+    container_name: paisa-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_WEB_HOST_PORT:-8790}:80"
+    depends_on:
+      paisa-api:
+        condition: service_started
+
+volumes:
+  paisa-postgres-data:

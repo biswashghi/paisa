@@ -13,16 +13,20 @@ type RewardProcessingService struct {
 }
 
 func (s RewardProcessingService) ProcessTransactionEvents(ctx context.Context) (domain.ProcessTransactionEventsResult, error) {
-	eventIDs, err := s.app.stores.Transactions.AcceptedIDs(ctx, 50)
+	var bundles []ports.ProcessingEventBundle
+	err := s.app.uow.WithinTx(ctx, func(ctx context.Context, stores ports.StoreSet) error {
+		var err error
+		bundles, err = stores.Transactions.ClaimAndLoadAcceptedTransactions(ctx, 50)
+		return err
+	})
 	if err != nil {
 		return domain.ProcessTransactionEventsResult{}, err
 	}
 
 	result := domain.ProcessTransactionEventsResult{}
-	for _, eventID := range eventIDs {
-		if err := s.processOneEvent(ctx, eventID); err != nil {
+	for _, bundle := range bundles {
+		if err := s.processOneEvent(ctx, bundle); err != nil {
 			result.Failed++
-			_ = s.app.stores.Transactions.MarkFailed(ctx, eventID)
 			continue
 		}
 		result.Processed++
@@ -30,38 +34,46 @@ func (s RewardProcessingService) ProcessTransactionEvents(ctx context.Context) (
 	return result, nil
 }
 
-func (s RewardProcessingService) processOneEvent(ctx context.Context, eventID string) error {
-	return s.app.uow.WithinTx(ctx, func(ctx context.Context, stores ports.StoreSet) error {
-		if err := stores.Transactions.ClaimAccepted(ctx, eventID); err != nil {
-			return domain.InvariantError(fmt.Sprintf("event not accepted: %s", eventID))
-		}
-
-		event, err := stores.Transactions.LoadForProcessing(ctx, eventID)
-		if err != nil {
-			return err
-		}
+func (s RewardProcessingService) processOneEvent(ctx context.Context, bundle ports.ProcessingEventBundle) error {
+	event := bundle.Event
+	if len(event.Lines) == 0 {
+		event.Lines = bundle.LineItems
+	}
+	err := s.app.uow.WithinTx(ctx, func(ctx context.Context, stores ports.StoreSet) error {
+		var err error
 		switch event.Type {
 		case domain.EventRefund:
 			_, err = s.processRefundEvent(ctx, stores, event)
 		case domain.EventPurchase:
 			_, err = s.processPurchaseEvent(ctx, stores, event)
 		default:
-			if err := stores.RewardCalculations.CreateFailed(ctx, event, fmt.Sprintf("unsupported transaction type %s", event.Type)); err != nil {
-				return err
-			}
-			return stores.Transactions.MarkFailed(ctx, event.ID)
+			return domain.InvalidError(fmt.Sprintf("unsupported transaction type %s", event.Type))
 		}
 		if err != nil {
 			return err
 		}
 		return stores.Transactions.MarkProcessed(ctx, event.ID)
 	})
+	if err == nil {
+		return nil
+	}
+	failureReason := publicFailureReason(err)
+	failureErr := s.app.uow.WithinTx(ctx, func(ctx context.Context, stores ports.StoreSet) error {
+		if err := stores.RewardCalculations.CreateFailed(ctx, event, failureReason); err != nil {
+			return err
+		}
+		return stores.Transactions.MarkFailed(ctx, event.ID)
+	})
+	if failureErr != nil {
+		return failureErr
+	}
+	return err
 }
 
 func (s RewardProcessingService) processPurchaseEvent(ctx context.Context, stores ports.StoreSet, event domain.RewardProcessingEvent) (string, error) {
 	ruleSet, err := stores.Rules.ActiveProgramAndPublishedRuleSet(ctx, event.PartnerID, event.MemberID)
 	if err != nil {
-		return "", stores.RewardCalculations.CreateFailed(ctx, event, publicFailureReason(err))
+		return "", err
 	}
 	calculation, err := s.calculateRuleSetPurchase(ctx, stores, event, ruleSet, true)
 	if err != nil {
@@ -127,7 +139,7 @@ func (s RewardProcessingService) processRefundEvent(ctx context.Context, stores 
 	if err != nil {
 		points, selectedAwards, fallbackErr := s.calculateMissingOriginalRefund(ctx, stores, event, programID, ruleVersionID, basis)
 		if fallbackErr != nil {
-			return "", stores.RewardCalculations.CreateFailed(ctx, event, publicFailureReason(fallbackErr))
+			return "", fallbackErr
 		}
 		totalPoints = points
 		refundCalc["originalTransactionMissing"] = true
@@ -235,10 +247,11 @@ func (s RewardProcessingService) calculateMissingOriginalRefund(ctx context.Cont
 		_ = ruleVersionID
 		return points, selected, nil
 	}
-	graph, err := stores.Rules.LoadGraph(ctx, ruleVersionID)
+	graphs, err := s.loadPublishedRuleGraphs(ctx, stores, []string{ruleVersionID})
 	if err != nil {
 		return 0, nil, err
 	}
+	graph := graphs[ruleVersionID]
 	synthetic := event
 	synthetic.Type = domain.EventPurchase
 	synthetic.EligibleMinor = basis
@@ -275,11 +288,12 @@ func (s RewardProcessingService) calculateRuleSetPurchase(ctx context.Context, s
 	groups := []interface{}{}
 	selectedAwards := []interface{}{}
 	components := []domain.JSONMap{}
+	graphs, err := s.loadPublishedRuleGraphs(ctx, stores, ruleSet.RuleVersionIDs)
+	if err != nil {
+		return nil, err
+	}
 	for index, ruleVersionID := range ruleSet.RuleVersionIDs {
-		graph, err := stores.Rules.LoadGraph(ctx, ruleVersionID)
-		if err != nil {
-			return nil, err
-		}
+		graph := graphs[ruleVersionID]
 		component, err := calculatePurchase(ctx, stores, event, graph, ruleVersionID, commitLimitUsage)
 		if err != nil {
 			return nil, err
@@ -316,6 +330,27 @@ func (s RewardProcessingService) calculateRuleSetPurchase(ctx context.Context, s
 		"components":     components,
 		"totalPoints":    total,
 	}, nil
+}
+
+func (s RewardProcessingService) loadPublishedRuleGraphs(ctx context.Context, stores ports.StoreSet, ruleVersionIDs []string) (map[string]domain.RuleGraph, error) {
+	graphs, missing := s.app.ruleGraphCache.getMany(ruleVersionIDs)
+	if len(missing) == 0 {
+		return graphs, nil
+	}
+	loaded, err := stores.Rules.LoadGraphs(ctx, missing)
+	if err != nil {
+		return nil, err
+	}
+	s.app.ruleGraphCache.putMany(loaded)
+	for id, graph := range loaded {
+		graphs[id] = graph
+	}
+	for _, id := range ruleVersionIDs {
+		if _, ok := graphs[id]; !ok {
+			return nil, domain.AppError{Kind: domain.ErrorKindNotFound, Message: "rule graph not found"}
+		}
+	}
+	return graphs, nil
 }
 
 func syntheticRefundPurchase(event domain.RewardProcessingEvent, basis int) domain.RewardProcessingEvent {

@@ -26,15 +26,45 @@ func (s TransactionStore) Create(ctx context.Context, input ports.TransactionCre
 		INSERT INTO paisa.transaction_events (
 			partner_id, member_id, external_transaction_id, original_external_transaction_id,
 			type, currency, subtotal_minor, tax_minor, total_minor, eligible_minor,
-			occurred_at, raw_payload, payload_hash
+			occurred_at, raw_payload, payload_hash, source_system, source_connection_id,
+			source_location_id, external_event_type, idempotency_key
 		)
-		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10, $11, $12, $13,
+			COALESCE(NULLIF($14, ''), 'legacy'), NULLIF($15, '')::uuid, NULLIF($16, ''), NULLIF($17, ''), NULLIF($18, ''))
 		RETURNING id`,
 		input.PartnerID, input.MemberID, input.ExternalTransactionID, input.OriginalExternalTransactionID,
 		input.Type, input.Currency, input.SubtotalMinor, input.TaxMinor, input.TotalMinor, input.EligibleMinor,
-		input.OccurredAt, input.RawPayload, input.PayloadHash,
+		input.OccurredAt, input.RawPayload, input.PayloadHash, input.SourceSystem, input.SourceConnectionID,
+		input.SourceLocationID, input.ExternalEventType, input.IdempotencyKey,
 	).Scan(&eventID)
 	return eventID, AppErrorFromDB(err)
+}
+
+func (s TransactionStore) CreateIfNotExists(ctx context.Context, input ports.TransactionCreateInput) (string, bool, error) {
+	var eventID string
+	err := s.q.QueryRowContext(ctx, `
+		INSERT INTO paisa.transaction_events (
+			partner_id, member_id, external_transaction_id, original_external_transaction_id,
+			type, currency, subtotal_minor, tax_minor, total_minor, eligible_minor,
+			occurred_at, raw_payload, payload_hash, source_system, source_connection_id,
+			source_location_id, external_event_type, idempotency_key
+		)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10, $11, $12, $13,
+			COALESCE(NULLIF($14, ''), 'legacy'), NULLIF($15, '')::uuid, NULLIF($16, ''), NULLIF($17, ''), NULLIF($18, ''))
+		ON CONFLICT (partner_id, external_transaction_id) DO NOTHING
+		RETURNING id`,
+		input.PartnerID, input.MemberID, input.ExternalTransactionID, input.OriginalExternalTransactionID,
+		input.Type, input.Currency, input.SubtotalMinor, input.TaxMinor, input.TotalMinor, input.EligibleMinor,
+		input.OccurredAt, input.RawPayload, input.PayloadHash, input.SourceSystem, input.SourceConnectionID,
+		input.SourceLocationID, input.ExternalEventType, input.IdempotencyKey,
+	).Scan(&eventID)
+	if isNotFound(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, AppErrorFromDB(err)
+	}
+	return eventID, true, nil
 }
 
 func (s TransactionStore) InsertLineItems(ctx context.Context, eventID string, lines []domain.LineItemInput) error {
@@ -133,6 +163,80 @@ func (s TransactionStore) AcceptedIDs(ctx context.Context, limit int) ([]string,
 		eventIDs = append(eventIDs, eventID)
 	}
 	return eventIDs, AppErrorFromDB(rows.Err())
+}
+
+func (s TransactionStore) ClaimAndLoadAcceptedTransactions(ctx context.Context, limit int) ([]ports.ProcessingEventBundle, error) {
+	rows, err := s.q.QueryContext(ctx, `
+		WITH claimed AS (
+			SELECT id
+			FROM paisa.transaction_events
+			WHERE status = $1
+			ORDER BY created_at
+			LIMIT $2
+			FOR UPDATE SKIP LOCKED
+		)
+		UPDATE paisa.transaction_events te
+		SET status = $3, updated_at = now()
+		FROM claimed
+		WHERE te.id = claimed.id
+		RETURNING te.id, te.partner_id, te.member_id, te.external_transaction_id, te.original_external_transaction_id,
+			te.type, te.currency, COALESCE(te.subtotal_minor, 0), COALESCE(te.tax_minor, 0),
+			COALESCE(te.total_minor, 0), COALESCE(te.eligible_minor, 0), te.occurred_at, te.raw_payload`,
+		domain.StatusAccepted, limit, domain.StatusProcessing)
+	if err != nil {
+		return nil, AppErrorFromDB(err)
+	}
+	defer rows.Close()
+
+	bundles := []ports.ProcessingEventBundle{}
+	byID := map[string]int{}
+	eventIDs := []string{}
+	for rows.Next() {
+		var event domain.RewardProcessingEvent
+		var original sql.NullString
+		var rawPayload []byte
+		if err := rows.Scan(&event.ID, &event.PartnerID, &event.MemberID, &event.ExternalTransactionID, &original, &event.Type, &event.Currency, &event.SubtotalMinor, &event.TaxMinor, &event.TotalMinor, &event.EligibleMinor, &event.OccurredAt, &rawPayload); err != nil {
+			return nil, AppErrorFromDB(err)
+		}
+		if original.Valid {
+			event.OriginalExternalTransactionID = original.String
+		}
+		event.RawPayload = scanJSON(rawPayload)
+		byID[event.ID] = len(bundles)
+		eventIDs = append(eventIDs, event.ID)
+		bundles = append(bundles, ports.ProcessingEventBundle{Event: event})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, AppErrorFromDB(err)
+	}
+	if len(eventIDs) == 0 {
+		return bundles, nil
+	}
+
+	lineRows, err := s.q.QueryContext(ctx, `
+		SELECT transaction_event_id, COALESCE(external_line_id, ''), COALESCE(sku, ''), COALESCE(category, ''), quantity,
+			COALESCE(subtotal_minor, 0), COALESCE(tax_minor, 0), COALESCE(total_minor, 0), COALESCE(eligible_minor, 0)
+		FROM paisa.transaction_line_items
+		WHERE transaction_event_id = ANY($1)
+		ORDER BY transaction_event_id, created_at`, pqArray(eventIDs))
+	if err != nil {
+		return nil, AppErrorFromDB(err)
+	}
+	defer lineRows.Close()
+	for lineRows.Next() {
+		var eventID string
+		var line domain.LineItemInput
+		if err := lineRows.Scan(&eventID, &line.ExternalLineID, &line.SKU, &line.Category, &line.Quantity, &line.SubtotalMinor, &line.TaxMinor, &line.TotalMinor, &line.EligibleMinor); err != nil {
+			return nil, AppErrorFromDB(err)
+		}
+		index, ok := byID[eventID]
+		if !ok {
+			continue
+		}
+		bundles[index].LineItems = append(bundles[index].LineItems, line)
+		bundles[index].Event.Lines = append(bundles[index].Event.Lines, line)
+	}
+	return bundles, AppErrorFromDB(lineRows.Err())
 }
 
 func (s TransactionStore) ClaimAccepted(ctx context.Context, eventID string) error {

@@ -37,6 +37,7 @@ func main() {
 		UnitOfWork: dbAdapter,
 	})
 	r := httpapi.NewRouter(httpapi.Services{
+		Auth:             appServices.Auth,
 		Partners:         appServices.Partners,
 		Programs:         appServices.Programs,
 		Members:          appServices.Members,
@@ -44,12 +45,18 @@ func main() {
 		RewardProcessing: appServices.RewardProcessing,
 		Ledger:           appServices.Ledger,
 		Reporting:        appServices.Reporting,
+		Locations:        appServices.Locations,
+		Catalog:          appServices.Catalog,
+		Redemptions:      appServices.Redemptions,
+		Integrations:     appServices.Integrations,
+		Dashboard:        appServices.Dashboard,
+		Campaigns:        appServices.Campaigns,
 	})
 
 	cors := cors.New(cors.Options{
-		AllowedHeaders: []string{"content-type"},
+		AllowedHeaders: []string{"content-type", "authorization", "x-paisa-api-key", "idempotency-key"},
 		AllowedOrigins: allowedOrigins(),
-		AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
+		AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 	})
 	routerWithCors := cors.Handler(r)
 

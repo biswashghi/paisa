@@ -30,6 +30,10 @@ func calculatePurchase(ctx context.Context, stores ports.StoreSet, event domain.
 
 	groups := append([]domain.RuleGraphGroup{}, graph.Groups...)
 	sort.Slice(groups, func(i, j int) bool { return groups[i].Priority < groups[j].Priority })
+	limitsByRule := map[string][]domain.RuleGraphLimit{}
+	for _, limit := range graph.Limits {
+		limitsByRule[limit.RuleID] = append(limitsByRule[limit.RuleID], limit)
+	}
 	for _, group := range groups {
 		groupRules := domain.RulesForGroup(graph.Rules, group.ID)
 		var selected []calcCandidate
@@ -44,7 +48,7 @@ func calculatePurchase(ctx context.Context, stores ports.StoreSet, event domain.
 					outcomes[rule.ID] = candidate
 					continue
 				}
-				candidate, err := evaluateRuleCandidate(ctx, stores, event, rule, 0, false)
+				candidate, err := evaluateRuleCandidate(ctx, stores, event, rule, limitsByRule[rule.ID], 0, false)
 				if err != nil {
 					return nil, err
 				}
@@ -76,7 +80,7 @@ func calculatePurchase(ctx context.Context, stores ports.StoreSet, event domain.
 					continue
 				}
 				basis := waterfallBasis(event, rule, remaining)
-				candidate, err := evaluateRuleCandidate(ctx, stores, event, rule, basis, true)
+				candidate, err := evaluateRuleCandidate(ctx, stores, event, rule, limitsByRule[rule.ID], basis, true)
 				if err != nil {
 					return nil, err
 				}
@@ -97,7 +101,7 @@ func calculatePurchase(ctx context.Context, stores ports.StoreSet, event domain.
 					outcomes[rule.ID] = candidate
 					continue
 				}
-				candidate, err := evaluateRuleCandidate(ctx, stores, event, rule, 0, false)
+				candidate, err := evaluateRuleCandidate(ctx, stores, event, rule, limitsByRule[rule.ID], 0, false)
 				if err != nil {
 					return nil, err
 				}
@@ -143,7 +147,7 @@ func calculatePurchase(ctx context.Context, stores ports.StoreSet, event domain.
 	return domain.JSONMap{"groups": traceGroups, "selectedAwards": selectedAwards, "totalPoints": total}, nil
 }
 
-func evaluateRuleCandidate(ctx context.Context, stores ports.StoreSet, event domain.RewardProcessingEvent, rule domain.RuleGraphRule, forcedBasis int, useForcedBasis bool) (calcCandidate, error) {
+func evaluateRuleCandidate(ctx context.Context, stores ports.StoreSet, event domain.RewardProcessingEvent, rule domain.RuleGraphRule, limits []domain.RuleGraphLimit, forcedBasis int, useForcedBasis bool) (calcCandidate, error) {
 	candidate := calcCandidate{RuleID: rule.ID}
 	eligible, err := eligibleForRule(ctx, stores, event, rule)
 	if err != nil {
@@ -170,10 +174,6 @@ func evaluateRuleCandidate(ctx context.Context, stores ports.StoreSet, event dom
 	candidate.RawPoints = points
 	candidate.Points = points
 
-	limits, err := stores.Rules.LimitsForRule(ctx, rule.ID)
-	if err != nil {
-		return candidate, err
-	}
 	for _, limit := range limits {
 		candidate.LimitID = limit.ID
 		usedPoints, usedBasis, err := stores.Rules.CurrentLimitUsage(ctx, event.MemberID, limit, event.OccurredAt)

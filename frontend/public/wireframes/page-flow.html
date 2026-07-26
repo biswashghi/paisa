@@ -3,195 +3,267 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Page Flow Design</title>
+    <title>Paisa Partner Admin Page Flow</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
-    <div class="shell">
-      <aside class="side">
-        <div class="brand">
+  <body class="flow-page">
+    <main class="flow-main">
+      <header class="flow-hero">
+        <div>
           <img src="../paisa-wordmark.png" alt="Paisa" />
-          <strong>Wireframes</strong>
-          <span>Non-functional UX flow</span>
+          <p class="label">Product architecture</p>
+          <h1>Partner admin page and input flow</h1>
+          <p>
+            A proposed portal map for how partner admins move from setup to enrollment,
+            member-specific rewards changes, earned activity review, and operational audit.
+          </p>
         </div>
-        <nav class="nav">
-          <a href="./index.html"><strong>Flow map</strong><small>Portal navigation</small></a>
-          <a class="active" href="./page-flow.html"><strong>Page-flow design</strong><small>Mermaid + drawing</small></a>
-          <a href="./login.html"><strong>Login</strong><small>Default partner</small></a>
-          <a href="./dashboard.html"><strong>Dashboard</strong><small>Operating overview</small></a>
-          <a href="./programs.html"><strong>Programs</strong><small>Program detail</small></a>
-          <a href="./rule-studio.html"><strong>Rule Studio</strong><small>Rules and packages</small></a>
-          <a href="./members.html"><strong>Members</strong><small>Moves and add-ons</small></a>
-          <a href="./activity.html"><strong>Activity</strong><small>Earned transactions</small></a>
-        </nav>
-      </aside>
-      <main class="main">
-        <header class="header">
-          <div>
-            <p class="label">Page Mapping</p>
-            <h1>Partner admin page-flow design</h1>
-            <p>A visual map of how the portal screens connect across program setup, rule publishing, member moves, add-on assignment, and earned activity audit.</p>
+        <div class="actions">
+          <a class="button secondary" href="./page-flow.md">Open Mermaid source</a>
+        </div>
+      </header>
+
+      <section class="flow-board" aria-label="Detailed partner admin page flow">
+        <div class="lane setup-lane">
+          <div class="lane-title">
+            <span>01</span>
+            <strong>Workspace Entry</strong>
+            <small>Establish partner, environment, and operating context.</small>
           </div>
-          <div class="actions">
-            <a class="button secondary" href="./page-flow.mmd">Open Mermaid source</a>
-            <a class="button" href="./index.html">Back to overview</a>
+          <article class="journey-node entry">
+            <h2>Sign In / SSO</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Email, auth method, partner workspace, API environment.</dd>
+              <dt>Outputs</dt>
+              <dd>Authenticated admin context and default workspace.</dd>
+            </dl>
+          </article>
+          <article class="journey-node entry">
+            <h2>Command Center</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Date range, selected programs, rule health, exception queue.</dd>
+              <dt>Outputs</dt>
+              <dd>Prioritized worklist: setup, member actions, activity audit, exports.</dd>
+            </dl>
+          </article>
+        </div>
+
+        <div class="lane program-lane">
+          <div class="lane-title">
+            <span>02</span>
+            <strong>Program Setup</strong>
+            <small>Create the rewards container before enrolling members.</small>
           </div>
-        </header>
+          <article class="journey-node setup">
+            <h2>Program Builder</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Name, earn currency, liability model, enrollment policy, effective dates.</dd>
+              <dt>Outputs</dt>
+              <dd>Draft program with policy and accounting defaults.</dd>
+            </dl>
+          </article>
+          <article class="journey-node setup">
+            <h2>Program Detail</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Program metadata, status, policy, active base rules, package library.</dd>
+              <dt>Outputs</dt>
+              <dd>Program ready for enrollment, rule editing, package creation, and audit.</dd>
+            </dl>
+          </article>
+          <article class="journey-node setup decision">
+            <h2>Rule Studio</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Applies-to scope, group strategy, eligibility, formula, caps, dependencies, tests.</dd>
+              <dt>Outputs</dt>
+              <dd>Validated base rule version or reusable member add-on package.</dd>
+            </dl>
+          </article>
+          <article class="journey-node setup">
+            <h2>Publish / Schedule</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Validation result, publish date, change note, reviewer.</dd>
+              <dt>Outputs</dt>
+              <dd>Active base rule or published add-on package available to assign.</dd>
+            </dl>
+          </article>
+        </div>
 
-        <section class="panel">
-          <div class="section-intro">
-            <p class="label">Rendered drawing</p>
-            <h2>Screen relationship map</h2>
+        <div class="lane member-lane">
+          <div class="lane-title">
+            <span>03</span>
+            <strong>Enrollment And Member Operations</strong>
+            <small>Put members into programs, then layer exceptions carefully.</small>
           </div>
-          <div class="svg-map" role="img" aria-label="Partner admin portal page flow">
-            <svg viewBox="0 0 1260 720">
-              <defs>
-                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#007f79" />
-                </marker>
-              </defs>
+          <article class="journey-node member">
+            <h2>Enrollment Inbox</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>API imports, CSV uploads, invitations, consent, eligibility review.</dd>
+              <dt>Outputs</dt>
+              <dd>Approved, pending, or rejected member enrollments.</dd>
+            </dl>
+          </article>
+          <article class="journey-node member hub">
+            <h2>Member Rewards Profile</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Member lookup, active program, balance, add-ons, earning history.</dd>
+              <dt>Outputs</dt>
+              <dd>Decision point for move program, add package, adjustment, or audit.</dd>
+            </dl>
+          </article>
+          <article class="journey-node member">
+            <h2>Move Program</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Target program, effective date, reason, operator note.</dd>
+              <dt>Outputs</dt>
+              <dd>New active enrollment and preserved historical trace.</dd>
+            </dl>
+          </article>
+          <article class="journey-node member">
+            <h2>Assign Add-On Package</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Published package, start/end dates, reason, compatibility check.</dd>
+              <dt>Outputs</dt>
+              <dd>Active member rule assignment layered over base program.</dd>
+            </dl>
+          </article>
+        </div>
 
-              <path class="map-link" d="M188 94 H288" />
-              <path class="map-link" d="M488 94 H588" />
-              <path class="map-link" d="M788 94 H888" />
-              <path class="map-link" d="M1088 94 H1160 V206 H1088" />
-
-              <path class="map-link" d="M688 142 V215" />
-              <path class="map-link" d="M688 315 V386" />
-              <path class="map-link" d="M788 442 H888" />
-              <path class="map-link" d="M1088 442 H1160 V112 H1088" />
-
-              <path class="map-link blue" d="M388 142 V215" />
-              <path class="map-link blue" d="M388 315 V386" />
-              <path class="map-link blue" d="M488 442 H588" />
-              <path class="map-link blue" d="M388 315 H588" />
-
-              <path class="map-link amber" d="M188 610 H288" />
-              <path class="map-link amber" d="M488 610 H588" />
-              <path class="map-link amber" d="M788 610 H888" />
-              <path class="map-link amber" d="M988 554 V494" />
-              <path class="map-link amber" d="M688 554 V494" />
-
-              <g class="map-node primary" transform="translate(28 46)">
-                <rect width="160" height="96" rx="12" />
-                <text x="18" y="35">Login</text>
-                <text class="small" x="18" y="60">Default partner</text>
-                <text class="small" x="18" y="78">session</text>
-              </g>
-              <g class="map-node primary" transform="translate(288 46)">
-                <rect width="200" height="96" rx="12" />
-                <text x="18" y="35">Dashboard</text>
-                <text class="small" x="18" y="60">Summaries, health,</text>
-                <text class="small" x="18" y="78">next actions</text>
-              </g>
-              <g class="map-node action" transform="translate(588 46)">
-                <rect width="200" height="96" rx="12" />
-                <text x="18" y="35">Programs</text>
-                <text class="small" x="18" y="60">Program detail hub</text>
-                <text class="small" x="18" y="78">and tabs</text>
-              </g>
-              <g class="map-node action" transform="translate(888 46)">
-                <rect width="200" height="96" rx="12" />
-                <text x="18" y="35">Rule Studio</text>
-                <text class="small" x="18" y="60">Graph editor for</text>
-                <text class="small" x="18" y="78">base or package</text>
-              </g>
-
-              <g class="map-node action" transform="translate(588 215)">
-                <rect width="200" height="100" rx="12" />
-                <text x="18" y="35">Base Rules</text>
-                <text class="small" x="18" y="62">Program-wide</text>
-                <text class="small" x="18" y="80">published graph</text>
-              </g>
-              <g class="map-node action" transform="translate(588 386)">
-                <rect width="200" height="108" rx="12" />
-                <text x="18" y="35">Rule Packages</text>
-                <text class="small" x="18" y="62">Reusable member</text>
-                <text class="small" x="18" y="80">add-on rules</text>
-              </g>
-              <g class="map-node action" transform="translate(888 386)">
-                <rect width="200" height="108" rx="12" />
-                <text x="18" y="35">Publish Rules</text>
-                <text class="small" x="18" y="62">Return to program</text>
-                <text class="small" x="18" y="80">after validation</text>
-              </g>
-
-              <g class="map-node action" transform="translate(288 215)">
-                <rect width="200" height="100" rx="12" />
-                <text x="18" y="35">Members</text>
-                <text class="small" x="18" y="62">Enrollment detail</text>
-                <text class="small" x="18" y="80">and balance</text>
-              </g>
-              <g class="map-node action" transform="translate(288 386)">
-                <rect width="200" height="108" rx="12" />
-                <text x="18" y="35">Move Program</text>
-                <text class="small" x="18" y="62">Target, effective</text>
-                <text class="small" x="18" y="80">date, reason</text>
-              </g>
-              <g class="map-node action" transform="translate(588 554)">
-                <rect width="200" height="108" rx="12" />
-                <text x="18" y="35">Assign Add-On</text>
-                <text class="small" x="18" y="62">Member-specific</text>
-                <text class="small" x="18" y="80">rule assignment</text>
-              </g>
-
-              <g class="map-node audit" transform="translate(28 562)">
-                <rect width="160" height="96" rx="12" />
-                <text x="18" y="35">Activity</text>
-                <text class="small" x="18" y="60">Earned point</text>
-                <text class="small" x="18" y="78">event stream</text>
-              </g>
-              <g class="map-node audit" transform="translate(288 562)">
-                <rect width="200" height="96" rx="12" />
-                <text x="18" y="35">Member History</text>
-                <text class="small" x="18" y="60">Trace base and</text>
-                <text class="small" x="18" y="78">add-on sources</text>
-              </g>
-              <g class="map-node primary" transform="translate(888 554)">
-                <rect width="200" height="108" rx="12" />
-                <text x="18" y="35">Back to Dashboard</text>
-                <text class="small" x="18" y="62">Return to health</text>
-                <text class="small" x="18" y="80">and summaries</text>
-              </g>
-            </svg>
+        <div class="lane earn-lane">
+          <div class="lane-title">
+            <span>04</span>
+            <strong>Earned Activity And Simulation</strong>
+            <small>Explain points before and after transactions post.</small>
           </div>
-        </section>
+          <article class="journey-node earn">
+            <h2>Rule Simulator</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Member profile, hypothetical transaction, date, category, amount.</dd>
+              <dt>Outputs</dt>
+              <dd>Projected points, rule explanation, validation feedback.</dd>
+            </dl>
+          </article>
+          <article class="journey-node earn">
+            <h2>Transaction Review</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Transaction id, member, program, category, amount, event time.</dd>
+              <dt>Outputs</dt>
+              <dd>Earning trace showing base rule and add-on package sources.</dd>
+            </dl>
+          </article>
+          <article class="journey-node earn">
+            <h2>Ledger And Liability</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Posted earns, burns, reversals, adjustments, liability period.</dd>
+              <dt>Outputs</dt>
+              <dd>Balance, liability accrual, reconciliation totals.</dd>
+            </dl>
+          </article>
+        </div>
 
-        <section class="panel">
-          <div class="section-intro">
-            <p class="label">Mermaid source</p>
-            <h2>Copyable diagram definition</h2>
+        <div class="lane audit-lane">
+          <div class="lane-title">
+            <span>05</span>
+            <strong>Audit, Exports, Integrations</strong>
+            <small>Close the loop with traceability and partner reporting.</small>
           </div>
-          <pre class="mermaid-code">flowchart LR
-  login["Login\nDefault partner session"]
-  dashboard["Dashboard\nPortfolio health + next actions"]
-  programs["Programs\nProgram detail hub"]
-  baseRules["Base Rules\nProgram-wide graph"]
-  packages["Rule Packages\nReusable member add-ons"]
-  studio["Rule Studio\nGuided graph editor"]
-  publish["Publish Rules\nBase or add-on package"]
-  members["Members\nEnrollment detail"]
-  move["Move Program\nTarget + effective date + reason"]
-  assign["Assign Add-On\nMember rule assignment"]
-  activity["Activity\nEarned transaction stream"]
-  history["Member History\nTrace base + add-on sources"]
+          <article class="journey-node audit">
+            <h2>Audit Log</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Rule publishes, member moves, package assignments, manual adjustments.</dd>
+              <dt>Outputs</dt>
+              <dd>Operator trace, compliance history, rollback context.</dd>
+            </dl>
+          </article>
+          <article class="journey-node audit">
+            <h2>Exports And Webhooks</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Date range, file schema, destination, webhook retry policy.</dd>
+              <dt>Outputs</dt>
+              <dd>Partner files, callbacks, and integration delivery status.</dd>
+            </dl>
+          </article>
+          <article class="journey-node audit hub">
+            <h2>Health And Exceptions</h2>
+            <dl>
+              <dt>Inputs</dt>
+              <dd>Failed validations, processing errors, stale exports, unusual liability changes.</dd>
+              <dt>Outputs</dt>
+              <dd>Command Center alerts and next action queue.</dd>
+            </dl>
+          </article>
+        </div>
+      </section>
 
-  login --> dashboard
-  dashboard --> programs
-  programs --> baseRules --> studio
-  programs --> packages --> studio
-  studio --> publish --> programs
+      <section class="panel flow-rules">
+        <div class="section-intro">
+          <p class="label">Flow rules</p>
+          <h2>How pages hand work to each other</h2>
+        </div>
+        <div class="rule-grid">
+          <article><strong>Programs come before members.</strong><span>A member cannot enroll until a program has policy and at least one publishable base rule path.</span></article>
+          <article><strong>Rules publish into scopes.</strong><span>Rule Studio publishes either a program base rule or a reusable add-on package, never an ambiguous private copy.</span></article>
+          <article><strong>Member actions require reason and effective timing.</strong><span>Move program and assign package both create auditable changes that affect future earning.</span></article>
+          <article><strong>Transactions always explain source.</strong><span>Earned activity should show base rule, add-on package, simulation result, ledger entry, and audit event.</span></article>
+          <article><strong>Exceptions return to the Command Center.</strong><span>Failed validations, export retries, and processing anomalies become dashboard work items.</span></article>
+        </div>
+      </section>
 
-  dashboard --> members
-  programs --> members
-  members --> move --> activity
-  members --> assign --> activity
+      <section class="panel">
+        <div class="section-intro">
+          <p class="label">Mermaid source</p>
+          <h2>Copyable diagram definition</h2>
+        </div>
+        <pre class="mermaid-code">flowchart TB
+  SignIn["Sign in / SSO\nInputs: email, auth method, partner workspace, API environment\nOutput: authenticated admin context"]
+  Home["Command Center\nInputs: date range, program filter, validation alerts, exception queue\nOutput: prioritized worklist + navigation"]
+  ProgramCreate["Program Builder\nInputs: program name, earn currency, liability model, enrollment policy, effective dates\nOutput: draft rewards program"]
+  ProgramDetail["Program Detail\nInputs: metadata, status, policy, active base rule, package library\nOutput: program ready for enrollment + rule work"]
+  RuleStudio["Rule Studio\nInputs: scope, strategy, eligibility, formula, caps, dependencies, test scenarios\nOutput: validated rule version or add-on package"]
+  RuleDecision{"Validation passes?"}
+  Publish["Publish / Schedule\nInputs: date, change note, reviewer\nOutput: active base rule or published add-on"]
+  EnrollmentInbox["Enrollment Inbox\nInputs: API/CSV imports, invitations, consent, eligibility\nOutput: approved or pending enrollments"]
+  MemberProfile["Member Rewards Profile\nInputs: lookup, active program, balance, add-ons, history\nOutput: member-level action decision"]
+  MoveProgram["Move Program\nInputs: target program, effective date, reason\nOutput: enrollment change"]
+  AssignPackage["Assign Add-On Package\nInputs: package, dates, reason, compatibility\nOutput: member rule assignment"]
+  Simulator["Rule Simulator\nInputs: member profile, hypothetical transaction\nOutput: projected points + explanation"]
+  TransactionReview["Transaction Review\nInputs: transaction id, member, category, amount, event time\nOutput: earning trace"]
+  Ledger["Ledger And Liability\nInputs: posted events, adjustments, period\nOutput: balances + reconciliation"]
+  AuditLog["Audit Log\nInputs: publishes, moves, assignments, adjustments\nOutput: compliance history"]
+  Exports["Exports And Webhooks\nInputs: range, schema, destination, retry policy\nOutput: files or callbacks"]
+  Health["Health And Exceptions\nInputs: validation failures, processing errors, stale exports\nOutput: dashboard alerts"]
 
-  dashboard --> activity
-  activity --> history --> members
-  activity --> dashboard</pre>
-        </section>
-      </main>
-    </div>
+  SignIn --> Home
+  Home --> ProgramCreate --> ProgramDetail --> RuleStudio --> RuleDecision
+  RuleDecision -- Fix issues --> RuleStudio
+  RuleDecision -- Publish --> Publish --> ProgramDetail
+  ProgramDetail --> EnrollmentInbox --> MemberProfile
+  Publish --> EnrollmentInbox
+  MemberProfile --> MoveProgram --> MemberProfile
+  MemberProfile --> AssignPackage --> MemberProfile
+  RuleStudio --> Simulator
+  MemberProfile --> Simulator --> TransactionReview
+  Home --> TransactionReview
+  TransactionReview --> Ledger --> Exports --> Health --> Home
+  Publish --> AuditLog
+  MoveProgram --> AuditLog
+  AssignPackage --> AuditLog
+  TransactionReview --> AuditLog</pre>
+      </section>
+    </main>
   </body>
 </html>

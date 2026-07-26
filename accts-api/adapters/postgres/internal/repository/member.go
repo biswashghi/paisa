@@ -68,6 +68,18 @@ func (s MemberStore) GetByExternalID(ctx context.Context, partnerID, externalCus
 	return member, AppErrorFromDB(err)
 }
 
+func (s MemberStore) GetByIdentifierHash(ctx context.Context, partnerID, identifierType, valueHash string) (domain.Member, error) {
+	var member domain.Member
+	err := s.q.QueryRowContext(ctx, `
+		SELECT m.id, m.partner_id, m.external_customer_id, m.status, m.created_at, m.updated_at
+		FROM paisa.member_identifiers mi
+		JOIN paisa.members m ON m.id = mi.member_id
+		WHERE mi.partner_id = $1 AND mi.type = $2 AND mi.value_hash = $3`,
+		partnerID, identifierType, valueHash,
+	).Scan(&member.ID, &member.PartnerID, &member.ExternalCustomerID, &member.Status, &member.CreatedAt, &member.UpdatedAt)
+	return member, AppErrorFromDB(err)
+}
+
 func (s MemberStore) AccountID(ctx context.Context, partnerID, memberID string) (string, error) {
 	accountID, err := MemberAccountID(ctx, s.q, partnerID, memberID)
 	return accountID, AppErrorFromDB(err)

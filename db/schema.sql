@@ -10,6 +10,67 @@ CREATE TABLE IF NOT EXISTS paisa.partners (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS paisa.partner_users (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'admin',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (partner_id, email)
+);
+
+CREATE TABLE IF NOT EXISTS paisa.sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    partner_user_id UUID NOT NULL REFERENCES paisa.partner_users(id),
+    token_hash TEXT UNIQUE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paisa.api_keys (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    name TEXT NOT NULL,
+    key_prefix TEXT NOT NULL,
+    secret_hash TEXT UNIQUE NOT NULL,
+    scopes TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    status TEXT NOT NULL DEFAULT 'active',
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revoked_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS paisa.partner_locations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    name TEXT NOT NULL,
+    address TEXT,
+    timezone TEXT NOT NULL DEFAULT 'America/Detroit',
+    status TEXT NOT NULL DEFAULT 'active',
+    external_location_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paisa.integration_connections (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    provider TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    external_merchant_id TEXT,
+    external_location_id TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    last_sync_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS paisa.programs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     partner_id UUID NOT NULL REFERENCES paisa.partners(id),
@@ -211,10 +272,34 @@ CREATE TABLE IF NOT EXISTS paisa.transaction_events (
     occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     raw_payload JSONB NOT NULL,
     payload_hash TEXT NOT NULL,
+    source_system TEXT NOT NULL DEFAULT 'legacy',
+    source_connection_id UUID,
+    source_location_id TEXT,
+    external_event_type TEXT,
+    idempotency_key TEXT,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (partner_id, external_transaction_id)
 );
+
+ALTER TABLE paisa.transaction_events
+ADD COLUMN IF NOT EXISTS source_system TEXT NOT NULL DEFAULT 'legacy';
+
+ALTER TABLE paisa.transaction_events
+ADD COLUMN IF NOT EXISTS source_connection_id UUID;
+
+ALTER TABLE paisa.transaction_events
+ADD COLUMN IF NOT EXISTS source_location_id TEXT;
+
+ALTER TABLE paisa.transaction_events
+ADD COLUMN IF NOT EXISTS external_event_type TEXT;
+
+ALTER TABLE paisa.transaction_events
+ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+
+ALTER TABLE paisa.transaction_events
+ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS paisa.transaction_line_items (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -243,6 +328,71 @@ CREATE TABLE IF NOT EXISTS paisa.reward_calculations (
     failure_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (transaction_event_id)
+);
+
+CREATE TABLE IF NOT EXISTS paisa.catalog_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    program_id UUID REFERENCES paisa.programs(id),
+    location_id UUID REFERENCES paisa.partner_locations(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    points_cost INTEGER NOT NULL,
+    reward_type TEXT NOT NULL DEFAULT 'manual_discount',
+    status TEXT NOT NULL DEFAULT 'active',
+    expires_after_minutes INTEGER NOT NULL DEFAULT 15,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paisa.redemption_codes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    catalog_item_id UUID NOT NULL REFERENCES paisa.catalog_items(id),
+    code TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'available',
+    redemption_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (partner_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS paisa.redemptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    member_id UUID NOT NULL REFERENCES paisa.members(id),
+    member_account_id UUID NOT NULL REFERENCES paisa.member_accounts(id),
+    catalog_item_id UUID NOT NULL REFERENCES paisa.catalog_items(id),
+    code TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'requested',
+    points_cost INTEGER NOT NULL,
+    reservation_expires_at TIMESTAMPTZ,
+    failure_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (partner_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS paisa.redemption_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    redemption_id UUID NOT NULL REFERENCES paisa.redemptions(id),
+    status TEXT NOT NULL,
+    details JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paisa.campaigns (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    partner_id UUID NOT NULL REFERENCES paisa.partners(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    starts_at TIMESTAMPTZ,
+    ends_at TIMESTAMPTZ,
+    required_visit_count INTEGER NOT NULL DEFAULT 3,
+    reward_catalog_item_id UUID REFERENCES paisa.catalog_items(id),
+    metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS paisa.rule_limit_usage (
@@ -304,8 +454,64 @@ CREATE TABLE IF NOT EXISTS paisa.ledger_exports (
 CREATE INDEX IF NOT EXISTS transaction_events_status_created_idx
 ON paisa.transaction_events(status, created_at);
 
+CREATE INDEX IF NOT EXISTS transaction_events_accepted_claim_idx
+ON paisa.transaction_events(status, created_at, id)
+WHERE status = 'accepted';
+
 CREATE INDEX IF NOT EXISTS transaction_events_partner_member_occurred_idx
 ON paisa.transaction_events(partner_id, member_id, occurred_at);
+
+CREATE INDEX IF NOT EXISTS transaction_events_partner_member_type_status_occurred_idx
+ON paisa.transaction_events(partner_id, member_id, type, status, occurred_at);
+
+CREATE INDEX IF NOT EXISTS transaction_events_partner_original_type_idx
+ON paisa.transaction_events(partner_id, original_external_transaction_id, type);
+
+CREATE INDEX IF NOT EXISTS program_enrollments_partner_member_active_idx
+ON paisa.program_enrollments(partner_id, member_id)
+WHERE status = 'active';
+
+CREATE INDEX IF NOT EXISTS program_rule_versions_partner_program_scope_status_published_idx
+ON paisa.program_rule_versions(partner_id, program_id, scope, status, published_at DESC);
+
+CREATE INDEX IF NOT EXISTS member_rule_assignments_partner_member_status_window_idx
+ON paisa.member_rule_assignments(partner_id, member_id, status, starts_at, ends_at);
+
+CREATE INDEX IF NOT EXISTS rule_groups_version_status_priority_idx
+ON paisa.rule_groups(rule_version_id, status, priority);
+
+CREATE INDEX IF NOT EXISTS earning_rules_group_status_priority_idx
+ON paisa.earning_rules(rule_group_id, status, priority);
+
+CREATE INDEX IF NOT EXISTS rule_limits_rule_status_idx
+ON paisa.rule_limits(rule_id, status);
+
+CREATE INDEX IF NOT EXISTS rule_dependencies_rule_idx
+ON paisa.rule_dependencies(rule_id);
+
+CREATE INDEX IF NOT EXISTS reward_calculations_event_status_idx
+ON paisa.reward_calculations(transaction_event_id, status);
+
+CREATE INDEX IF NOT EXISTS balance_snapshots_partner_account_idx
+ON paisa.balance_snapshots(partner_id, member_account_id);
+
+CREATE INDEX IF NOT EXISTS sessions_token_hash_idx
+ON paisa.sessions(token_hash, status);
+
+CREATE INDEX IF NOT EXISTS api_keys_secret_hash_idx
+ON paisa.api_keys(secret_hash, status);
+
+CREATE INDEX IF NOT EXISTS member_identifiers_lookup_idx
+ON paisa.member_identifiers(partner_id, type, value_hash);
+
+CREATE INDEX IF NOT EXISTS catalog_items_partner_status_idx
+ON paisa.catalog_items(partner_id, status);
+
+CREATE INDEX IF NOT EXISTS redemptions_partner_member_idx
+ON paisa.redemptions(partner_id, member_id, created_at);
+
+CREATE INDEX IF NOT EXISTS integration_connections_partner_provider_idx
+ON paisa.integration_connections(partner_id, provider, status);
 
 CREATE INDEX IF NOT EXISTS reward_calculations_partner_status_created_idx
 ON paisa.reward_calculations(partner_id, status, created_at);

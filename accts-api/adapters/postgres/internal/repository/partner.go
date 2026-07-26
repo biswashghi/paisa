@@ -47,3 +47,13 @@ func (s PartnerStore) GetByKey(ctx context.Context, partnerKey string) (domain.P
 	).Scan(&partner.ID, &partner.PartnerKey, &partner.Name, &partner.Status, &partner.CreatedAt, &partner.UpdatedAt)
 	return partner, AppErrorFromDB(err)
 }
+
+func (s PartnerStore) GetByID(ctx context.Context, partnerID string) (domain.Partner, error) {
+	var partner domain.Partner
+	err := s.q.QueryRowContext(ctx, `
+		SELECT id, partner_key, name, status, created_at, updated_at
+		FROM paisa.partners
+		WHERE id = $1`, partnerID,
+	).Scan(&partner.ID, &partner.PartnerKey, &partner.Name, &partner.Status, &partner.CreatedAt, &partner.UpdatedAt)
+	return partner, AppErrorFromDB(err)
+}

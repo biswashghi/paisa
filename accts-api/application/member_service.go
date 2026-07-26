@@ -2,9 +2,12 @@ package application
 
 import (
 	"context"
+	"strings"
 
 	"accts-api/domain"
 	"accts-api/ports"
+
+	"github.com/google/uuid"
 )
 
 type MemberService struct {
@@ -36,7 +39,8 @@ func (s MemberService) CreateMember(ctx context.Context, partnerKey string, body
 			if identifier.Type == "" || identifier.Value == "" {
 				continue
 			}
-			valueHash := domain.HashIdentifierValue(identifier.Value)
+			identifier.Type = strings.TrimSpace(strings.ToLower(identifier.Type))
+			valueHash := domain.HashIdentifier(identifier.Type, identifier.Value)
 			if err := stores.Members.InsertIdentifierHash(ctx, partner.ID, member.ID, identifier.Type, valueHash); err != nil {
 				return err
 			}
@@ -47,6 +51,87 @@ func (s MemberService) CreateMember(ctx context.Context, partnerKey string, body
 			}
 		}
 		result = domain.MemberCreateResult{Member: member, Account: account}
+		return nil
+	})
+	return result, err
+}
+
+func (s MemberService) ResolveOrCreateMember(ctx context.Context, partnerKey string, body domain.ResolveMemberRequest) (domain.ResolveMemberResult, error) {
+	partner, err := s.app.stores.Partners.GetByKey(ctx, partnerKey)
+	if err != nil {
+		return domain.ResolveMemberResult{}, err
+	}
+	return s.ResolveOrCreateMemberForPartnerID(ctx, partner.ID, body)
+}
+
+func (s MemberService) ResolveOrCreateMemberForPartnerID(ctx context.Context, partnerID string, body domain.ResolveMemberRequest) (domain.ResolveMemberResult, error) {
+	if len(body.Identifiers) == 0 && strings.TrimSpace(body.ExternalCustomerID) == "" {
+		return domain.ResolveMemberResult{}, domain.InvalidError("at least one customer identifier is required")
+	}
+
+	if body.ExternalCustomerID != "" {
+		member, err := s.app.stores.Members.GetByExternalID(ctx, partnerID, body.ExternalCustomerID)
+		if err == nil {
+			accountID, accountErr := s.app.stores.Members.AccountID(ctx, partnerID, member.ID)
+			if accountErr != nil {
+				return domain.ResolveMemberResult{}, accountErr
+			}
+			return domain.ResolveMemberResult{Member: member, Account: domain.MemberAccount{ID: accountID, PartnerID: partnerID, MemberID: member.ID, Status: domain.StatusActive}}, nil
+		}
+		if !domain.IsErrorKind(err, domain.ErrorKindNotFound) {
+			return domain.ResolveMemberResult{}, err
+		}
+	}
+	for _, identifier := range body.Identifiers {
+		if strings.TrimSpace(identifier.Type) == "" || strings.TrimSpace(identifier.Value) == "" {
+			continue
+		}
+		identifierType := strings.ToLower(strings.TrimSpace(identifier.Type))
+		member, err := s.app.stores.Members.GetByIdentifierHash(ctx, partnerID, identifierType, domain.HashIdentifier(identifierType, identifier.Value))
+		if err == nil {
+			accountID, accountErr := s.app.stores.Members.AccountID(ctx, partnerID, member.ID)
+			if accountErr != nil {
+				return domain.ResolveMemberResult{}, accountErr
+			}
+			return domain.ResolveMemberResult{Member: member, Account: domain.MemberAccount{ID: accountID, PartnerID: partnerID, MemberID: member.ID, Status: domain.StatusActive}}, nil
+		}
+		if !domain.IsErrorKind(err, domain.ErrorKindNotFound) {
+			return domain.ResolveMemberResult{}, err
+		}
+	}
+
+	var result domain.ResolveMemberResult
+	err := s.app.uow.WithinTx(ctx, func(ctx context.Context, stores ports.StoreSet) error {
+		externalID := strings.TrimSpace(body.ExternalCustomerID)
+		if externalID == "" {
+			externalID = "member-" + uuid.NewString()
+		}
+		member, err := stores.Members.Create(ctx, partnerID, externalID)
+		if err != nil {
+			return err
+		}
+		account, err := stores.Members.CreateAccount(ctx, partnerID, member.ID)
+		if err != nil {
+			return err
+		}
+		if err := stores.Ledger.CreateBalanceSnapshot(ctx, account.ID, partnerID); err != nil {
+			return err
+		}
+		for _, identifier := range body.Identifiers {
+			if strings.TrimSpace(identifier.Type) == "" || strings.TrimSpace(identifier.Value) == "" {
+				continue
+			}
+			identifierType := strings.ToLower(strings.TrimSpace(identifier.Type))
+			if err := stores.Members.InsertIdentifierHash(ctx, partnerID, member.ID, identifierType, domain.HashIdentifier(identifierType, identifier.Value)); err != nil {
+				return err
+			}
+		}
+		if body.ProgramID != "" {
+			if err := enrollMember(ctx, stores, partnerID, member.ID, body.ProgramID); err != nil {
+				return err
+			}
+		}
+		result = domain.ResolveMemberResult{Member: member, Account: account, Created: true}
 		return nil
 	})
 	return result, err

@@ -1,0 +1,167 @@
+name: Deploy Paisa
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: paisa-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: project
+          POSTGRES_USER: project
+          POSTGRES_PASSWORD: paisa-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U project -d project"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PAISA_POSTGRES_HOST: localhost
+      PAISA_POSTGRES_PORT: "5432"
+      PAISA_POSTGRES_USER: project
+      PAISA_POSTGRES_DB: project
+      PAISA_POSTGRES_PASSWORD: paisa-ci-password
+      PAISA_SCHEMA_PATH: ../db/schema.sql
+      PAISA_ALLOWED_ORIGINS: http://localhost:5174
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: accts-api/go.mod
+          cache-dependency-path: accts-api/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run Go tests
+        working-directory: accts-api
+        run: go test ./...
+
+      - name: Build Go API
+        working-directory: accts-api
+        run: go build ./...
+
+      - name: Smoke API with Postgres
+        working-directory: accts-api
+        env:
+          PAISA_HTTP_ADDR: 127.0.0.1:18080
+        run: |
+          go run server.go > /tmp/paisa-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:18080/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/paisa-api.log
+          exit 1
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_PAISA_API_URL: https://api.paisa.example.com
+        run: npm run build
+
+      - name: Check deploy script syntax
+        run: |
+          bash -n scripts/deploy-vps.sh
+          bash -n scripts/deploy-hetzner.sh
+
+      - name: Check compose config
+        env:
+          PAISA_POSTGRES_PASSWORD: paisa-ci-password
+          PAISA_API_DOMAIN: api.paisa.example.com
+          PAISA_WEB_DOMAIN: paisa.example.com
+        run: docker compose -f docker-compose.prod.yml config
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+        run: |
+          test -n "$HETZNER_HOST"
+          test -n "$HETZNER_SSH_KEY"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$HETZNER_SSH_KEY" > ~/.ssh/hetzner
+          chmod 600 ~/.ssh/hetzner
+          ssh-keyscan -H "$HETZNER_HOST" >> ~/.ssh/known_hosts
+          {
+            echo "Host $HETZNER_HOST"
+            echo "  IdentityFile ~/.ssh/hetzner"
+            echo "  IdentitiesOnly yes"
+          } >> ~/.ssh/config
+
+      - name: Deploy to VPS
+        env:
+          APP_API_HOST_PORT: ${{ vars.APP_API_HOST_PORT || '8791' }}
+          APP_WEB_HOST_PORT: ${{ vars.APP_WEB_HOST_PORT || '8790' }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_USER: ${{ secrets.HETZNER_USER }}
+          PAISA_API_DOMAIN: ${{ vars.PAISA_API_DOMAIN }}
+          PAISA_POSTGRES_PASSWORD: ${{ secrets.PAISA_POSTGRES_PASSWORD }}
+          PAISA_WEB_DOMAIN: ${{ vars.PAISA_WEB_DOMAIN }}
+        run: |
+          test -n "$HETZNER_USER"
+          test -n "$PAISA_API_DOMAIN"
+          test -n "$PAISA_WEB_DOMAIN"
+          test -n "$PAISA_POSTGRES_PASSWORD"
+          ./scripts/deploy-vps.sh \
+            "$HETZNER_USER" \
+            "$HETZNER_HOST" \
+            "https://github.com/biswashghi/paisa.git" \
+            main
+
+      - name: Verify deployment
+        env:
+          PAISA_API_DOMAIN: ${{ vars.PAISA_API_DOMAIN }}
+          PAISA_WEB_DOMAIN: ${{ vars.PAISA_WEB_DOMAIN }}
+        run: |
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error "https://${PAISA_API_DOMAIN}/health" >/dev/null &&
+               curl --fail --silent --show-error --head "https://${PAISA_WEB_DOMAIN}" >/dev/null; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1

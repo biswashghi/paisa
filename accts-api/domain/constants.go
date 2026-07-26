@@ -28,6 +28,14 @@ const (
 	EntryReservationRelease = "reservation_release"
 	EntryPointsExpiration   = "points_expiration"
 
+	RedemptionRequested = "requested"
+	RedemptionReserved  = "reserved"
+	RedemptionValidated = "validated"
+	RedemptionCaptured  = "captured"
+	RedemptionReleased  = "released"
+	RedemptionExpired   = "expired"
+	RedemptionVoided    = "voided"
+
 	RuleStrategyStack     = "stack"
 	RuleStrategyMaxOf     = "max_of"
 	RuleStrategyWaterfall = "waterfall"

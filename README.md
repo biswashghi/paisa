@@ -4,9 +4,10 @@ Paisa is being reframed as a loyalty-platform backend for companies that want to
 offer customer rewards without building benefit management, member management,
 reward calculation, and fulfillment infrastructure in house.
 
-The current vertical slice is intentionally backend-first. It uses readable
-`partner_key` URL scoping instead of auth while the core domain is still being
-validated.
+The current vertical slice now includes the backend loyalty core plus an
+API-backed partner console. Legacy `partner_key` URL routes remain for local
+compatibility, while new partner and cashier APIs use session/API-key scoped
+authentication.
 
 ## Current Scope
 
@@ -21,12 +22,17 @@ validated.
 - Insert-only ledger entries and balance snapshots
 - Manual point adjustments
 - Ledger-derived liability export summaries
+- Partner session login and partner-scoped API keys
+- Phone/email/QR member resolution for cashier workflows
+- Reward catalog and reserve/capture/release redemption lifecycle
+- Manual cashier transaction ingestion
+- Partner locations, integration connection records, and campaign/passport records
+- API-backed partner console with cashier, rewards, integrations, onboarding, and campaigns views
 
 Deferred for now:
 
-- Auth, sessions, API keys, partner users, and internal users
-- Polished product frontend
-- Redemption/coupon fulfillment workflow
+- Internal admin users and impersonation
+- Production Square OAuth credentials and live Square transaction pulling
 - Reservation timeout and earned-point expiration jobs
 - Production migrations
 
@@ -113,11 +119,24 @@ npm run dev
 
 Open the Vite localhost URL printed by `npm run dev`. The page is an API-backed
 partner-admin console that calls the backend at `http://localhost:8080`. Login
-with a readable `partner_key`; the UI will create that local test partner if it
-does not exist. Use **Seed API demo suite** to create programs, published rules,
-members, member add-ons, transactions, calculations, balances, and ledger rows in
-Postgres, then inspect the refreshed dashboard, programs, rules, members, and
-transactions views.
+with a readable `partner_key`; the UI will create a local partner session if the
+partner does not exist. Use **Seed API demo suite** to create programs, published
+rules, members, member add-ons, transactions, calculations, balances, and ledger
+rows in Postgres, then inspect the refreshed dashboard, cashier, rewards,
+programs, rules, members, transactions, integrations, onboarding, and campaigns
+views.
+
+For a full onboarding and load rehearsal, see
+`docs/e2e/loyalty-onboarding-runbook.md`. The reusable runner is:
+
+```bash
+PAISA_API_BASE=http://localhost:8080 node scripts/e2e-loyalty-load.mjs
+```
+
+By default it creates 3 partners, 2 programs per partner, 1000 members, 10000
+purchase transactions, and 1000 reserve/validate/capture redemptions. Override
+counts with `PAISA_E2E_MEMBERS`, `PAISA_E2E_TRANSACTIONS`, and
+`PAISA_E2E_REDEMPTIONS`.
 
 ## Smoke Test Localhost Clients
 

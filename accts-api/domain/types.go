@@ -11,6 +11,102 @@ type Partner struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
+type AuthContext struct {
+	PartnerID     string    `json:"partnerId"`
+	PartnerKey    string    `json:"partnerKey"`
+	PartnerName   string    `json:"partnerName"`
+	ActorType     string    `json:"actorType"`
+	ActorID       string    `json:"actorId"`
+	Scopes        []string  `json:"scopes"`
+	Authenticated time.Time `json:"authenticatedAt"`
+}
+
+type PartnerUser struct {
+	ID        string    `json:"id"`
+	PartnerID string    `json:"partnerId"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type LoginRequest struct {
+	PartnerKey string `json:"partnerKey"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+}
+
+type LoginResult struct {
+	Token   string      `json:"token"`
+	Auth    AuthContext `json:"auth"`
+	Partner Partner     `json:"partner"`
+	User    PartnerUser `json:"user"`
+}
+
+type APIKey struct {
+	ID         string     `json:"id"`
+	PartnerID  string     `json:"partnerId"`
+	Name       string     `json:"name"`
+	KeyPrefix  string     `json:"keyPrefix"`
+	Scopes     []string   `json:"scopes"`
+	Status     string     `json:"status"`
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	RevokedAt  *time.Time `json:"revokedAt,omitempty"`
+}
+
+type APIKeyCreateRequest struct {
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
+}
+
+type APIKeyCreateResult struct {
+	APIKey APIKey `json:"apiKey"`
+	Token  string `json:"token"`
+}
+
+type PartnerLocation struct {
+	ID                 string    `json:"id"`
+	PartnerID          string    `json:"partnerId"`
+	Name               string    `json:"name"`
+	Address            string    `json:"address,omitempty"`
+	Timezone           string    `json:"timezone"`
+	Status             string    `json:"status"`
+	ExternalLocationID string    `json:"externalLocationId,omitempty"`
+	CreatedAt          time.Time `json:"createdAt"`
+	UpdatedAt          time.Time `json:"updatedAt"`
+}
+
+type LocationRequest struct {
+	Name               string `json:"name"`
+	Address            string `json:"address"`
+	Timezone           string `json:"timezone"`
+	ExternalLocationID string `json:"externalLocationId"`
+}
+
+type IntegrationConnection struct {
+	ID                 string     `json:"id"`
+	PartnerID          string     `json:"partnerId"`
+	Provider           string     `json:"provider"`
+	Status             string     `json:"status"`
+	ExternalMerchantID string     `json:"externalMerchantId,omitempty"`
+	ExternalLocationID string     `json:"externalLocationId,omitempty"`
+	Metadata           JSONMap    `json:"metadata"`
+	LastSyncAt         *time.Time `json:"lastSyncAt,omitempty"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+}
+
+type IntegrationConnectionRequest struct {
+	Provider           string  `json:"provider"`
+	Status             string  `json:"status"`
+	ExternalMerchantID string  `json:"externalMerchantId"`
+	ExternalLocationID string  `json:"externalLocationId"`
+	Metadata           JSONMap `json:"metadata"`
+}
+
 type Program struct {
 	ID        string    `json:"id"`
 	PartnerID string    `json:"partnerId"`
@@ -247,6 +343,18 @@ type IdentifierRequest struct {
 	Value string `json:"value"`
 }
 
+type ResolveMemberRequest struct {
+	ExternalCustomerID string              `json:"externalCustomerId"`
+	Identifiers        []IdentifierRequest `json:"identifiers"`
+	ProgramID          string              `json:"programId"`
+}
+
+type ResolveMemberResult struct {
+	Member  Member        `json:"member"`
+	Account MemberAccount `json:"account"`
+	Created bool          `json:"created"`
+}
+
 type EnrollmentRequest struct {
 	ProgramID     string `json:"programId"`
 	EffectiveAt   string `json:"effectiveAt,omitempty"`
@@ -327,6 +435,42 @@ type TransactionIngestRequest struct {
 	LineItems                     []LineItemInput `json:"lineItems"`
 }
 
+type NormalizedTransaction struct {
+	SourceSystem                  string               `json:"sourceSystem"`
+	SourceConnectionID            string               `json:"sourceConnectionId,omitempty"`
+	SourceLocationID              string               `json:"sourceLocationId,omitempty"`
+	ExternalEventType             string               `json:"externalEventType,omitempty"`
+	IdempotencyKey                string               `json:"idempotencyKey,omitempty"`
+	ExternalTransactionID         string               `json:"externalTransactionId"`
+	OriginalExternalTransactionID string               `json:"originalExternalTransactionId,omitempty"`
+	Customer                      ResolveMemberRequest `json:"customer"`
+	MemberID                      string               `json:"memberId,omitempty"`
+	Type                          string               `json:"type"`
+	Currency                      string               `json:"currency"`
+	SubtotalMinor                 int                  `json:"subtotalMinor"`
+	TaxMinor                      int                  `json:"taxMinor"`
+	TotalMinor                    int                  `json:"totalMinor"`
+	EligibleMinor                 int                  `json:"eligibleMinor"`
+	OccurredAt                    string               `json:"occurredAt"`
+	LineItems                     []LineItemInput      `json:"lineItems"`
+	RawPayload                    JSONMap              `json:"rawPayload"`
+}
+
+type ManualTransactionRequest struct {
+	MemberID              string               `json:"memberId"`
+	Customer              ResolveMemberRequest `json:"customer"`
+	ExternalTransactionID string               `json:"externalTransactionId"`
+	LocationID            string               `json:"locationId"`
+	Category              string               `json:"category"`
+	Currency              string               `json:"currency"`
+	SubtotalMinor         int                  `json:"subtotalMinor"`
+	TaxMinor              int                  `json:"taxMinor"`
+	TotalMinor            int                  `json:"totalMinor"`
+	EligibleMinor         int                  `json:"eligibleMinor"`
+	OccurredAt            string               `json:"occurredAt"`
+	LineItems             []LineItemInput      `json:"lineItems"`
+}
+
 type LineItemInput struct {
 	ExternalLineID string `json:"externalLineId"`
 	SKU            string `json:"sku"`
@@ -348,6 +492,93 @@ type AdjustmentRequest struct {
 
 type AdjustmentResult struct {
 	LedgerEntryID string `json:"ledgerEntryId"`
+}
+
+type CatalogItem struct {
+	ID                  string    `json:"id"`
+	PartnerID           string    `json:"partnerId"`
+	ProgramID           string    `json:"programId,omitempty"`
+	LocationID          string    `json:"locationId,omitempty"`
+	Name                string    `json:"name"`
+	Description         string    `json:"description,omitempty"`
+	PointsCost          int       `json:"pointsCost"`
+	RewardType          string    `json:"rewardType"`
+	Status              string    `json:"status"`
+	ExpiresAfterMinutes int       `json:"expiresAfterMinutes"`
+	CreatedAt           time.Time `json:"createdAt"`
+	UpdatedAt           time.Time `json:"updatedAt"`
+}
+
+type CatalogItemRequest struct {
+	ProgramID           string `json:"programId"`
+	LocationID          string `json:"locationId"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	PointsCost          int    `json:"pointsCost"`
+	RewardType          string `json:"rewardType"`
+	Status              string `json:"status"`
+	ExpiresAfterMinutes int    `json:"expiresAfterMinutes"`
+}
+
+type Redemption struct {
+	ID                   string     `json:"id"`
+	PartnerID            string     `json:"partnerId"`
+	MemberID             string     `json:"memberId"`
+	MemberAccountID      string     `json:"memberAccountId"`
+	CatalogItemID        string     `json:"catalogItemId"`
+	CatalogItemName      string     `json:"catalogItemName,omitempty"`
+	Code                 string     `json:"code"`
+	Status               string     `json:"status"`
+	PointsCost           int        `json:"pointsCost"`
+	ReservationExpiresAt *time.Time `json:"reservationExpiresAt,omitempty"`
+	FailureReason        string     `json:"failureReason,omitempty"`
+	CreatedAt            time.Time  `json:"createdAt"`
+	UpdatedAt            time.Time  `json:"updatedAt"`
+}
+
+type RedemptionRequest struct {
+	MemberID      string `json:"memberId"`
+	CatalogItemID string `json:"catalogItemId"`
+}
+
+type RedemptionActionResult struct {
+	Redemption    Redemption      `json:"redemption"`
+	LedgerEntryID string          `json:"ledgerEntryId,omitempty"`
+	Balance       BalanceSnapshot `json:"balance"`
+}
+
+type DashboardSummary struct {
+	Partner             Partner `json:"partner"`
+	ActiveLocations     int     `json:"activeLocations"`
+	ActiveCatalogItems  int     `json:"activeCatalogItems"`
+	OpenRedemptions     int     `json:"openRedemptions"`
+	IntegrationWarnings int     `json:"integrationWarnings"`
+}
+
+type Campaign struct {
+	ID                  string     `json:"id"`
+	PartnerID           string     `json:"partnerId"`
+	Name                string     `json:"name"`
+	Description         string     `json:"description,omitempty"`
+	Status              string     `json:"status"`
+	StartsAt            *time.Time `json:"startsAt,omitempty"`
+	EndsAt              *time.Time `json:"endsAt,omitempty"`
+	RequiredVisitCount  int        `json:"requiredVisitCount"`
+	RewardCatalogItemID string     `json:"rewardCatalogItemId,omitempty"`
+	Metadata            JSONMap    `json:"metadata"`
+	CreatedAt           time.Time  `json:"createdAt"`
+	UpdatedAt           time.Time  `json:"updatedAt"`
+}
+
+type CampaignRequest struct {
+	Name                string  `json:"name"`
+	Description         string  `json:"description"`
+	Status              string  `json:"status"`
+	StartsAt            string  `json:"startsAt"`
+	EndsAt              string  `json:"endsAt"`
+	RequiredVisitCount  int     `json:"requiredVisitCount"`
+	RewardCatalogItemID string  `json:"rewardCatalogItemId"`
+	Metadata            JSONMap `json:"metadata"`
 }
 
 type ProcessTransactionEventsResult struct {

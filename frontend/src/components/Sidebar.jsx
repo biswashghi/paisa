@@ -1,11 +1,12 @@
 import PaisaLogo from "./PaisaLogo.jsx";
 
 const items = [
-  ["dashboard", "Dashboard", "Portfolio health"],
-  ["programs", "Programs", "Base + packages"],
-  ["rules", "Rule Studio", "Graph editor"],
-  ["members", "Enrollments", "Moves + add-ons"],
-  ["transactions", "Earned Activity", "Point events"],
+  ["dashboard", "01", "Dashboard", "Status"],
+  ["setup", "02", "Setup", "Checklist"],
+  ["programs", "03", "Programs", "Rules + rewards"],
+  ["members", "04", "Members", "Enrollments"],
+  ["activity", "05", "Activity", "Transactions"],
+  ["settings", "06", "Settings", "Keys + locations"],
 ];
 
 export default function Sidebar({ activeView, onChangeView }) {
@@ -18,15 +19,10 @@ export default function Sidebar({ activeView, onChangeView }) {
           <span>Partner Admin</span>
         </div>
       </div>
-      <div className="sidebar-snapshot">
-        <span>Today</span>
-        <strong>Rewards live</strong>
-        <small>Base rules and member packages are evaluating in production.</small>
-      </div>
       <nav>
-        {items.map(([id, label, detail]) => (
+        {items.map(([id, index, label, detail]) => (
           <button className={activeView === id ? "active" : ""} key={id} type="button" onClick={() => onChangeView(id)}>
-            <span className="nav-dot" aria-hidden="true" />
+            <span className="nav-index" aria-hidden="true">{index}</span>
             <span>
               <strong>{label}</strong>
               <small>{detail}</small>
@@ -36,8 +32,8 @@ export default function Sidebar({ activeView, onChangeView }) {
       </nav>
       <div className="sidebar-footer">
         <span>Workspace</span>
-        <strong>Production</strong>
-        <small>Default partner session</small>
+        <strong>Local</strong>
+        <small>Partner session</small>
       </div>
     </aside>
   );
