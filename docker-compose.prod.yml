@@ -26,7 +26,12 @@ services:
       paisa-postgres:
         condition: service_healthy
     environment:
-      PAISA_DATABASE_URL: postgres://${PAISA_POSTGRES_USER:-project}:${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}@paisa-postgres:5432/${PAISA_POSTGRES_DB:-project}?sslmode=disable
+      PAISA_POSTGRES_HOST: paisa-postgres
+      PAISA_POSTGRES_PORT: 5432
+      PAISA_POSTGRES_DB: ${PAISA_POSTGRES_DB:-project}
+      PAISA_POSTGRES_USER: ${PAISA_POSTGRES_USER:-project}
+      PAISA_POSTGRES_PASSWORD: ${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}
+      PAISA_POSTGRES_SSLMODE: disable
       PAISA_HTTP_ADDR: 0.0.0.0:8080
       PAISA_SCHEMA_PATH: /app/db/schema.sql
       PAISA_ALLOWED_ORIGINS: https://${PAISA_WEB_DOMAIN:?PAISA_WEB_DOMAIN is required}
