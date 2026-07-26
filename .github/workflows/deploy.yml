@@ -38,7 +38,7 @@ jobs:
       PAISA_POSTGRES_USER: project
       PAISA_POSTGRES_DB: project
       PAISA_POSTGRES_PASSWORD: paisa-ci-password
-      PAISA_SCHEMA_PATH: ../db/schema.sql
+      PAISA_SCHEMA_PATH: ${{ github.workspace }}/db/schema.sql
       PAISA_ALLOWED_ORIGINS: http://localhost:5174
 
     steps:
