@@ -1,7 +1,7 @@
 import SummaryCard from "./SummaryCard.jsx";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Dashboard({ programs, enrollments, transactions, dashboardSummary, selectedProgramId, onSelectProgram, onCreateProgram, onSeedDemoSuite, onChangeView }) {
+export default function Dashboard({ programs, enrollments, transactions, dashboardSummary, selectedProgramId, onSelectProgram, onCreateProgram, onChangeView }) {
   const selected = programs.find((program) => program.id === selectedProgramId) || programs[0] || emptyProgram;
   const totalMembers = enrollments.length;
   const activeMembers = enrollments.filter((enrollment) => enrollment.status === "active").length;
@@ -31,7 +31,6 @@ export default function Dashboard({ programs, enrollments, transactions, dashboa
           activeCatalogItems={activeCatalogItems}
           transactions={transactions}
           onCreateProgram={onCreateProgram}
-          onSeedDemoSuite={onSeedDemoSuite}
           onChangeView={onChangeView}
         />
       </section>
@@ -48,7 +47,6 @@ export default function Dashboard({ programs, enrollments, transactions, dashboa
           activeCatalogItems={activeCatalogItems}
           transactions={transactions}
           onCreateProgram={onCreateProgram}
-          onSeedDemoSuite={onSeedDemoSuite}
           onChangeView={onChangeView}
         />
       ) : null}
@@ -65,7 +63,6 @@ export default function Dashboard({ programs, enrollments, transactions, dashboa
         </div>
         <div className="dashboard-actions">
           <button type="button" onClick={() => onChangeView("programs")}>Rules</button>
-          <button type="button" onClick={onSeedDemoSuite}>Demo</button>
           <button className="primary" type="button" onClick={onCreateProgram}>Create program</button>
         </div>
       </div>
@@ -158,7 +155,7 @@ export default function Dashboard({ programs, enrollments, transactions, dashboa
   );
 }
 
-function LaunchChecklist({ partnerKey, programs, published, activeCatalogItems, transactions, onCreateProgram, onSeedDemoSuite, onChangeView }) {
+function LaunchChecklist({ partnerKey, programs, published, activeCatalogItems, transactions, onCreateProgram, onChangeView }) {
   const steps = [
     {
       label: "Program",
@@ -213,7 +210,6 @@ function LaunchChecklist({ partnerKey, programs, published, activeCatalogItems, 
         <button className="primary" type="button" onClick={next?.onClick || (() => onChangeView("setup"))}>
           {next?.action || "Open setup"}
         </button>
-        <button type="button" onClick={onSeedDemoSuite}>Seed full demo</button>
       </div>
     </section>
   );

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Settings({ apiKeys, latestApiToken, connections, onCreateApiKey, onStartSquare, onSyncConnection }) {
-  const [keyName, setKeyName] = useState("Cashier tablet key");
+export default function Settings({ apiKeys, latestApiToken, onCreateApiKey }) {
+  const [keyName, setKeyName] = useState("Partner API key");
 
   return (
     <section className="view-stack">
@@ -17,7 +17,7 @@ export default function Settings({ apiKeys, latestApiToken, connections, onCreat
         <div className="section-heading">
           <div>
             <p className="eyebrow">API keys</p>
-            <h3>Partner credentials</h3>
+            <h3>Access keys</h3>
           </div>
         </div>
         <div className="form-grid single">
@@ -26,7 +26,7 @@ export default function Settings({ apiKeys, latestApiToken, connections, onCreat
         <button className="primary" type="button" onClick={() => onCreateApiKey(keyName)}>Create key</button>
         {latestApiToken ? (
           <div className="secret-box">
-            <span>Shown once.</span>
+            <span>Shown once</span>
             <strong>{latestApiToken}</strong>
           </div>
         ) : null}
@@ -42,25 +42,6 @@ export default function Settings({ apiKeys, latestApiToken, connections, onCreat
         </div>
       </section>
 
-      <section className="panel spacious">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Integrations</p>
-            <h3>Square import</h3>
-          </div>
-          <button type="button" onClick={onStartSquare}>Connect Square</button>
-        </div>
-        <div className="card-grid compact-cards">
-          {connections.map((connection) => (
-            <article className="mini-card" key={connection.id}>
-              <div><strong>{connection.provider}</strong><StatusPill value={connection.status} /></div>
-              <span>{connection.externalMerchantId || "No merchant ID"}</span>
-              <small>{connection.lastSyncAt ? `Synced ${new Date(connection.lastSyncAt).toLocaleString()}` : "No sync"}</small>
-              <button type="button" onClick={() => onSyncConnection(connection.id)}>Sync</button>
-            </article>
-          ))}
-        </div>
-      </section>
     </section>
   );
 }

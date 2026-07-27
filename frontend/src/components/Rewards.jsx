@@ -1,8 +1,7 @@
 import { useState } from "react";
-import Campaigns from "./Campaigns.jsx";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Rewards({ catalogItems, redemptions, programs, campaigns = [], onCreateCatalogItem, onCreateCampaign, embedded = false }) {
+export default function Rewards({ catalogItems, redemptions, programs, onCreateCatalogItem, embedded = false }) {
   const [form, setForm] = useState({ name: "Free coffee", pointsCost: 100, description: "Manual POS discount after Paisa validation.", programId: "" });
 
   function submit() {
@@ -87,9 +86,6 @@ export default function Rewards({ catalogItems, redemptions, programs, campaigns
         </div>
       </section>
 
-      {onCreateCampaign ? (
-        <Campaigns campaigns={campaigns} catalogItems={catalogItems} onCreateCampaign={onCreateCampaign} embedded />
-      ) : null}
     </section>
   );
 }

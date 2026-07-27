@@ -62,7 +62,7 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
               <div>
                 <p className="eyebrow">Active enrollment</p>
                 <h3>{selected.member}</h3>
-                <span>{selected.email}</span>
+                {selected.email ? <span>{selected.email}</span> : null}
               </div>
               <StatusPill value={selected.status} />
             </div>
@@ -113,7 +113,7 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
               </label>
               <label>
                 Reason
-                <input value={moveReason} onChange={(event) => setMoveReason(event.target.value)} placeholder="Upgrade, campaign, support action" />
+                <input value={moveReason} onChange={(event) => setMoveReason(event.target.value)} placeholder="Upgrade, tier change, support action" />
               </label>
             </div>
             <button className="primary" type="button" onClick={moveMember}>Move program</button>

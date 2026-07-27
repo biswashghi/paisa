@@ -80,12 +80,4 @@ export const api = {
   captureRedemption: (redemptionId) => request(`/pos/v1/redemptions/${redemptionId}/capture`, { method: "POST" }),
   releaseRedemption: (redemptionId) => request(`/pos/v1/redemptions/${redemptionId}/release`, { method: "POST" }),
   listRedemptions: () => request("/partner/v1/redemptions"),
-
-  listIntegrationConnections: () => request("/partner/v1/integration-connections"),
-  startSquareOAuth: () => request("/partner/v1/integration-connections/square/oauth-start", { method: "POST" }),
-  completeSquareOAuth: (code) => request(`/partner/v1/integration-connections/square/oauth-callback?code=${encodeURIComponent(code)}`),
-  syncIntegrationConnection: (connectionId) => request(`/partner/v1/integration-connections/${connectionId}/sync`, { method: "POST" }),
-
-  createCampaign: (body) => request("/partner/v1/campaigns", { method: "POST", body: JSON.stringify(body) }),
-  listCampaigns: () => request("/partner/v1/campaigns"),
 };

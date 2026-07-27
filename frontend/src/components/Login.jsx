@@ -1,6 +1,6 @@
 import PaisaLogo from "./PaisaLogo.jsx";
 
-export default function Login({ apiBaseUrl, email, password, error, loading, onLogin, onEmailChange, onPasswordChange }) {
+export default function Login({ email, password, error, loading, onLogin, onEmailChange, onPasswordChange }) {
   return (
     <main className="login-page">
       <section className="login-card">
@@ -10,7 +10,6 @@ export default function Login({ apiBaseUrl, email, password, error, loading, onL
         <div className="login-partner">
           <span>Secure workspace</span>
           <strong>Email and password required</strong>
-          <small>{apiBaseUrl}</small>
         </div>
         <label className="login-field">
           Email

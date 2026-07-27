@@ -32,7 +32,7 @@ export default function Onboarding({
   const publishedPrograms = programs.filter((program) => program.status === "published").length;
   const checklist = [
     {
-      label: "Partner session",
+      label: "Account access",
       done: true,
       detail: "Signed in.",
     },

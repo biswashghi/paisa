@@ -2,8 +2,8 @@ export const defaultPartner = {
   id: "partner-acme",
   name: "Acme Retail",
   partnerKey: "acme-retail",
-  adminName: "Demo Admin",
-  adminEmail: "admin@example.invalid",
+  adminName: "Partner admin",
+  adminEmail: "",
   apiEnvironment: "Production",
 };
 
@@ -132,11 +132,11 @@ export const initialPrograms = [
 ];
 
 export const initialEnrollments = [
-  { id: "enr-001", member: "Member 1001", email: "member-1001@example.invalid", programId: "program-gold", status: "active", points: 18450, earnedPoints: 1040, joinedAt: "2026-07-01", addOns: ["pkg-vip-grocery"], lastChangeReason: "High value grocery household" },
-  { id: "enr-002", member: "Member 1002", email: "member-1002@example.invalid", programId: "program-gold", status: "active", points: 9120, earnedPoints: 342, joinedAt: "2026-07-05", addOns: [], lastChangeReason: "Initial enrollment" },
-  { id: "enr-003", member: "Member 1003", email: "member-1003@example.invalid", programId: "program-everyday", status: "pending_review", points: 0, earnedPoints: 0, joinedAt: "2026-07-18", addOns: [], lastChangeReason: "Imported from partner CRM" },
-  { id: "enr-004", member: "Member 1004", email: "member-1004@example.invalid", programId: "program-gold", status: "active", points: 2230, earnedPoints: 210, joinedAt: "2026-07-20", addOns: ["pkg-service-recovery"], lastChangeReason: "Support recovery" },
-  { id: "enr-005", member: "Member 1005", email: "member-1005@example.invalid", programId: "program-everyday", status: "active", points: 640, earnedPoints: 150, joinedAt: "2026-07-22", addOns: ["pkg-new-member"], lastChangeReason: "New member campaign" },
+  { id: "enr-001", member: "Member 1001", email: "", programId: "program-gold", status: "active", points: 18450, earnedPoints: 1040, joinedAt: "2026-07-01", addOns: ["pkg-vip-grocery"], lastChangeReason: "High value grocery household" },
+  { id: "enr-002", member: "Member 1002", email: "", programId: "program-gold", status: "active", points: 9120, earnedPoints: 342, joinedAt: "2026-07-05", addOns: [], lastChangeReason: "Initial enrollment" },
+  { id: "enr-003", member: "Member 1003", email: "", programId: "program-everyday", status: "pending_review", points: 0, earnedPoints: 0, joinedAt: "2026-07-18", addOns: [], lastChangeReason: "Imported from partner CRM" },
+  { id: "enr-004", member: "Member 1004", email: "", programId: "program-gold", status: "active", points: 2230, earnedPoints: 210, joinedAt: "2026-07-20", addOns: ["pkg-service-recovery"], lastChangeReason: "Support recovery" },
+  { id: "enr-005", member: "Member 1005", email: "", programId: "program-everyday", status: "active", points: 640, earnedPoints: 150, joinedAt: "2026-07-22", addOns: ["pkg-new-member"], lastChangeReason: "New member rule" },
 ];
 
 export const initialTransactions = [

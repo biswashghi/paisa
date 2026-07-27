@@ -101,10 +101,6 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
               </select>
             </label>
           ) : null}
-          <label>
-            Backend scope
-            <input readOnly value={appliesTo} />
-          </label>
         </div>
         {appliesTo === "member_add_on" ? <button type="button" onClick={createPackage}>Create add-on package</button> : null}
       </section>
@@ -177,7 +173,7 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
           <button type="button" onClick={addRule}>Add rule</button>
           <div className="issue-box">
             <strong>{issues.length ? "Validation issues" : "Ready to publish"}</strong>
-            {issues.length ? issues.map((issue) => <span key={issue}>{issue}</span>) : <span>No local issues detected.</span>}
+            {issues.length ? issues.map((issue) => <span key={issue}>{issue}</span>) : <span>No issues detected.</span>}
           </div>
         </aside>
       </div>
@@ -188,7 +184,6 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
             <p className="eyebrow">Rules</p>
             <h3>Configure earn candidates</h3>
           </div>
-          <span className="helper-copy">Edit the candidates below, then publish when validation clears.</span>
         </div>
         <div className="rule-editor-list">
           {group?.rules.map((rule) => (
@@ -218,20 +213,6 @@ export default function RuleStudio({ program, onUpdateProgram, onPublishProgramR
         </div>
       </section>
 
-      <section className="panel spacious">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">API payload</p>
-            <h3>Rule version request</h3>
-          </div>
-        </div>
-        <pre>{JSON.stringify({
-          scope: appliesTo,
-          ruleSetKey: editingPackage?.key,
-          name: editingPackage?.name,
-          ...rulesToPayload(editableProgram),
-        }, null, 2)}</pre>
-      </section>
     </section>
   );
 }

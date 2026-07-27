@@ -12,7 +12,6 @@ export default function Programs({
   transactions,
   catalogItems,
   redemptions,
-  campaigns,
   onSelectProgram,
   onCreateProgram,
   onUpdateProgram,
@@ -21,7 +20,6 @@ export default function Programs({
   onPublishProgramRules,
   onPublishRulePackage,
   onCreateCatalogItem,
-  onCreateCampaign,
 }) {
   const [activeTab, setActiveTab] = useState("Overview");
   const selected = programs.find((program) => program.id === selectedProgramId) || programs[0];
@@ -58,7 +56,7 @@ export default function Programs({
         {programs.map((program) => (
           <button className={program.id === selectedProgramId ? "list-item selected" : "list-item"} key={program.id} type="button" onClick={() => onSelectProgram(program.id)}>
             <strong>{program.name}</strong>
-            <span>{program.tierCode} / {enrollments.filter((enrollment) => enrollment.programId === program.id).length} active demo members</span>
+            <span>{program.tierCode} / {enrollments.filter((enrollment) => enrollment.programId === program.id).length} active members</span>
             <StatusPill value={program.status} />
           </button>
         ))}
@@ -69,7 +67,7 @@ export default function Programs({
             <div>
               <p className="eyebrow">Selected program</p>
               <h3>{selected.name}</h3>
-              <small>{selected.tierCode} / {programEnrollments.length} active demo enrollments / {assignedPackages} add-on assignments</small>
+              <small>{selected.tierCode} / {programEnrollments.length} active enrollments / {assignedPackages} add-on assignments</small>
             </div>
             <StatusPill value={selected.status} />
           </div>
@@ -143,10 +141,8 @@ export default function Programs({
             <Rewards
               catalogItems={catalogItems}
               redemptions={redemptions}
-              campaigns={campaigns}
               programs={programs}
               onCreateCatalogItem={onCreateCatalogItem}
-              onCreateCampaign={onCreateCampaign}
               embedded
             />
           ) : null}

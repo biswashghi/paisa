@@ -6,7 +6,7 @@ const items = [
   ["programs", "03", "Programs", "Rules + rewards"],
   ["members", "04", "Members", "Enrollments"],
   ["activity", "05", "Activity", "Transactions"],
-  ["settings", "06", "Settings", "Keys + integrations"],
+  ["settings", "06", "Settings", "Access"],
 ];
 
 export default function Sidebar({ activeView, onChangeView }) {
@@ -32,8 +32,8 @@ export default function Sidebar({ activeView, onChangeView }) {
       </nav>
       <div className="sidebar-footer">
         <span>Workspace</span>
-        <strong>Local</strong>
-        <small>Partner session</small>
+        <strong>Partner portal</strong>
+        <small>Signed in</small>
       </div>
     </aside>
   );
