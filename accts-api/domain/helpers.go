@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func DefaultPriority(priority, index int) int {
@@ -53,6 +55,25 @@ func EnsureActiveStatus(entity, status string) error {
 		return InvariantError(fmt.Sprintf("%s is not active", entity))
 	}
 	return nil
+}
+
+func HashPassword(password string) (string, error) {
+	password = strings.TrimSpace(password)
+	if len(password) < 8 {
+		return "", InvalidError("password must be at least 8 characters")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func VerifyPassword(password, passwordHash string) bool {
+	if strings.TrimSpace(password) == "" || strings.TrimSpace(passwordHash) == "" {
+		return false
+	}
+	return bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)) == nil
 }
 
 func ValidateTransactionType(value string) error {

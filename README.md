@@ -104,10 +104,26 @@ Run the API:
 ```bash
 cd accts-api
 export PAISA_POSTGRES_PASSWORD="<local-dev-password>"
+export PAISA_INTERNAL_ADMIN_TOKEN="local-internal-admin-token"
 PAISA_SCHEMA_PATH=../db/schema.sql go run server.go
 ```
 
 The API listens on `http://localhost:8080`.
+
+Create a local partner and first partner admin before signing into the UI:
+
+```bash
+curl -X POST http://localhost:8080/internal/v1/partners/onboard \
+  -H 'content-type: application/json' \
+  -H 'X-Paisa-Internal-Admin-Token: local-internal-admin-token' \
+  -d '{
+    "partnerKey": "acme-retail",
+    "partnerName": "Acme Retail",
+    "adminEmail": "admin@acme-retail.test",
+    "adminName": "Acme Admin",
+    "adminPassword": "AcmeAdmin123"
+  }'
+```
 
 Run the simple UI:
 
@@ -119,12 +135,8 @@ npm run dev
 
 Open the Vite localhost URL printed by `npm run dev`. The page is an API-backed
 partner-admin console that calls the backend at `http://localhost:8080`. Login
-with a readable `partner_key`; the UI will create a local partner session if the
-partner does not exist. Use **Seed API demo suite** to create programs, published
-rules, members, member add-ons, transactions, calculations, balances, and ledger
-rows in Postgres, then inspect the refreshed dashboard, cashier, rewards,
-programs, rules, members, transactions, integrations, onboarding, and campaigns
-views.
+with the onboarded partner admin email/password. A partner key is now a workspace
+slug, not an authentication credential.
 
 For a full onboarding and load rehearsal, see
 `docs/e2e/loyalty-onboarding-runbook.md`. The reusable runner is:

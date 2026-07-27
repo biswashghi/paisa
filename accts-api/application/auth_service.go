@@ -6,47 +6,94 @@ import (
 	"time"
 
 	"accts-api/domain"
+	"accts-api/ports"
 )
 
 type AuthService struct {
 	app app
 }
 
-func (s AuthService) Login(ctx context.Context, body domain.LoginRequest) (domain.LoginResult, error) {
+func (s AuthService) OnboardPartner(ctx context.Context, body domain.PartnerOnboardRequest) (domain.PartnerOnboardResult, error) {
 	partnerKey := strings.TrimSpace(body.PartnerKey)
 	if partnerKey == "" {
-		return domain.LoginResult{}, domain.InvalidError("partnerKey is required")
+		return domain.PartnerOnboardResult{}, domain.InvalidError("partnerKey is required")
 	}
-	email := strings.TrimSpace(body.Email)
+	partnerName := strings.TrimSpace(body.PartnerName)
+	if partnerName == "" {
+		partnerName = titleizePartnerKey(partnerKey)
+	}
+	email := strings.TrimSpace(body.AdminEmail)
 	if email == "" {
-		email = partnerKey + "@paisa.local"
+		return domain.PartnerOnboardResult{}, domain.InvalidError("adminEmail is required")
 	}
-	name := strings.TrimSpace(body.Name)
+	name := strings.TrimSpace(body.AdminName)
 	if name == "" {
 		name = "Partner Admin"
 	}
-
-	partner, err := s.app.stores.Partners.GetByKey(ctx, partnerKey)
+	passwordHash, err := domain.HashPassword(body.AdminPassword)
 	if err != nil {
-		if !domain.IsErrorKind(err, domain.ErrorKindNotFound) {
-			return domain.LoginResult{}, err
-		}
-		partner, err = s.app.stores.Partners.Create(ctx, domain.PartnerRequest{
-			PartnerKey: partnerKey,
-			Name:       titleizePartnerKey(partnerKey),
-		})
+		return domain.PartnerOnboardResult{}, err
+	}
+
+	var result domain.PartnerOnboardResult
+	err = s.app.uow.WithinTx(ctx, func(txCtx context.Context, stores ports.StoreSet) error {
+		partner, err := stores.Partners.GetByKey(txCtx, partnerKey)
 		if err != nil {
-			return domain.LoginResult{}, err
+			if !domain.IsErrorKind(err, domain.ErrorKindNotFound) {
+				return err
+			}
+			partner, err = stores.Partners.Create(txCtx, domain.PartnerRequest{
+				PartnerKey: partnerKey,
+				Name:       partnerName,
+			})
+			if err != nil {
+				return err
+			}
 		}
+		if err := domain.EnsureActiveStatus("partner", partner.Status); err != nil {
+			return err
+		}
+
+		user, err := stores.Auth.UpsertPartnerUserWithPassword(txCtx, partner.ID, email, name, passwordHash)
+		if err != nil {
+			return err
+		}
+		result = domain.PartnerOnboardResult{Partner: partner, User: user}
+		return nil
+	})
+	if err != nil {
+		return domain.PartnerOnboardResult{}, err
+	}
+	result.User.PasswordHash = ""
+	return result, nil
+}
+
+func (s AuthService) Login(ctx context.Context, body domain.LoginRequest) (domain.LoginResult, error) {
+	email := strings.TrimSpace(body.Email)
+	if email == "" {
+		return domain.LoginResult{}, domain.InvalidError("email is required")
+	}
+	if strings.TrimSpace(body.Password) == "" {
+		return domain.LoginResult{}, domain.InvalidError("password is required")
+	}
+
+	partner, user, err := s.app.stores.Auth.PartnerUserByEmail(ctx, email)
+	if err != nil {
+		if domain.IsErrorKind(err, domain.ErrorKindNotFound) {
+			return domain.LoginResult{}, domain.InvalidError("invalid email or password")
+		}
+		return domain.LoginResult{}, err
+	}
+	if !domain.VerifyPassword(body.Password, user.PasswordHash) {
+		return domain.LoginResult{}, domain.InvalidError("invalid email or password")
 	}
 	if err := domain.EnsureActiveStatus("partner", partner.Status); err != nil {
 		return domain.LoginResult{}, err
 	}
-
-	user, err := s.app.stores.Auth.UpsertPartnerUser(ctx, partner.ID, email, name)
-	if err != nil {
+	if err := domain.EnsureActiveStatus("partner user", user.Status); err != nil {
 		return domain.LoginResult{}, err
 	}
+
 	token := domain.GenerateToken("ps_session")
 	expiresAt := time.Now().UTC().Add(24 * time.Hour)
 	if err := s.app.stores.Auth.CreateSession(ctx, partner.ID, user.ID, domain.HashSecret(token), expiresAt); err != nil {
@@ -61,7 +108,16 @@ func (s AuthService) Login(ctx context.Context, body domain.LoginRequest) (domai
 		Scopes:        []string{"partner:read", "partner:write", "pos:write"},
 		Authenticated: time.Now().UTC(),
 	}
+	user.PasswordHash = ""
 	return domain.LoginResult{Token: token, Auth: auth, Partner: partner, User: user}, nil
+}
+
+func (s AuthService) Logout(ctx context.Context, token string) error {
+	token = strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
+	if token == "" {
+		return nil
+	}
+	return s.app.stores.Auth.RevokeSessionHash(ctx, domain.HashSecret(token))
 }
 
 func (s AuthService) AuthenticateToken(ctx context.Context, token string) (domain.AuthContext, error) {

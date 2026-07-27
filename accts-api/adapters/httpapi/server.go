@@ -2,11 +2,13 @@ package httpapi
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"accts-api/domain"
@@ -75,6 +77,10 @@ func NewRouter(services Services) *mux.Router {
 	v1.HandleFunc("/jobs/process-transaction-events", server.processTransactionEvents).Methods("POST")
 	v1.HandleFunc("/jobs/generate-ledger-liability-export", server.generateLedgerLiabilityExport).Methods("POST")
 	v1.HandleFunc("/partners/{partnerKey}/exports/ledger-liability", server.listLedgerLiabilityExports).Methods("GET")
+
+	internal := r.PathPrefix("/internal/v1").Subrouter()
+	internal.Use(server.requireInternalAdmin)
+	internal.HandleFunc("/partners/onboard", server.onboardPartner).Methods("POST")
 
 	partner := r.PathPrefix("/partner/v1").Subrouter()
 	partner.HandleFunc("/auth/login", server.partnerLogin).Methods("POST")
@@ -330,11 +336,25 @@ func (s Server) partnerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := s.services.Auth.Login(r.Context(), body)
+	if err != nil && strings.Contains(err.Error(), "invalid email or password") {
+		respondWithError(w, http.StatusUnauthorized, "invalid email or password")
+		return
+	}
 	respond(w, http.StatusOK, result, err)
 }
 
-func (s Server) partnerLogout(w http.ResponseWriter, _ *http.Request) {
-	respondWithJSON(w, http.StatusOK, map[string]string{"status": "signed_out"})
+func (s Server) onboardPartner(w http.ResponseWriter, r *http.Request) {
+	var body domain.PartnerOnboardRequest
+	if !decode(w, r, &body) {
+		return
+	}
+	result, err := s.services.Auth.OnboardPartner(r.Context(), body)
+	respond(w, http.StatusCreated, result, err)
+}
+
+func (s Server) partnerLogout(w http.ResponseWriter, r *http.Request) {
+	err := s.services.Auth.Logout(r.Context(), authTokenFromRequest(r))
+	respond(w, http.StatusOK, map[string]string{"status": "signed_out"}, err)
 }
 
 func (s Server) partnerMe(w http.ResponseWriter, r *http.Request) {
@@ -620,11 +640,7 @@ type authContextKey struct{}
 
 func (s Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("Authorization")
-		if token == "" {
-			token = r.Header.Get("X-Paisa-API-Key")
-		}
-		token = strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
+		token := authTokenFromRequest(r)
 		auth, err := s.services.Auth.AuthenticateToken(r.Context(), token)
 		if err != nil {
 			respondWithError(w, http.StatusUnauthorized, "unauthorized")
@@ -632,6 +648,30 @@ func (s Server) requireAuth(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), authContextKey{}, auth)))
 	})
+}
+
+func (s Server) requireInternalAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expected := strings.TrimSpace(os.Getenv("PAISA_INTERNAL_ADMIN_TOKEN"))
+		if expected == "" {
+			respondWithError(w, http.StatusServiceUnavailable, "internal admin onboarding is not configured")
+			return
+		}
+		actual := strings.TrimSpace(r.Header.Get("X-Paisa-Internal-Admin-Token"))
+		if actual == "" || subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) != 1 {
+			respondWithError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func authTokenFromRequest(r *http.Request) string {
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		token = r.Header.Get("X-Paisa-API-Key")
+	}
+	return strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
 }
 
 func authFromContext(ctx context.Context) domain.AuthContext {

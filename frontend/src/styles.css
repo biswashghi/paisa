@@ -489,6 +489,17 @@ pre {
   padding: 22px;
 }
 
+.setup-only-shell {
+  min-height: 100vh;
+  background: var(--theme-body-bg);
+}
+
+.setup-only-content {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 22px;
+}
+
 .view-stack {
   display: grid;
   gap: 16px;
@@ -1316,6 +1327,14 @@ pre {
   gap: 10px;
 }
 
+.setup-gate-copy {
+  max-width: 720px;
+  margin: -4px 0 4px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .setup-step {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -1735,15 +1754,15 @@ small,
 
 .notice-bar {
   margin-bottom: 16px;
-  border-color: rgba(141, 240, 125, 0.34);
-  background: rgba(141, 240, 125, 0.11);
-  color: #baffb1;
+  border-color: rgba(36, 122, 72, 0.22);
+  background: #f0f8f2;
+  color: #1f6b3a;
 }
 
 .notice-bar.error {
-  border-color: rgba(255, 107, 107, 0.36);
-  background: rgba(255, 107, 107, 0.12);
-  color: #ffb4b4;
+  border-color: rgba(184, 72, 72, 0.28);
+  background: #fff1f1;
+  color: #9f3030;
 }
 
 .hero-panel,
@@ -3108,6 +3127,53 @@ h3 {
 :root[data-theme="porcelain"] .paisa-logo.login img {
   filter: none;
   mix-blend-mode: multiply;
+}
+
+:root[data-theme="porcelain"] .login-page {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(29, 143, 131, 0.14), transparent 30%),
+    radial-gradient(circle at 82% 72%, rgba(177, 129, 44, 0.13), transparent 32%),
+    repeating-linear-gradient(90deg, rgba(24, 33, 43, 0.04) 0 1px, transparent 1px 72px),
+    #eef2ef;
+}
+
+:root[data-theme="porcelain"] .login-card {
+  border-color: rgba(34, 49, 66, 0.16);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 245, 0.94)),
+    #ffffff;
+  color: var(--text);
+  box-shadow: 0 22px 70px rgba(24, 33, 43, 0.14);
+}
+
+:root[data-theme="porcelain"] .login-card::before {
+  background:
+    linear-gradient(90deg, transparent, rgba(29, 143, 131, 0.08), transparent),
+    repeating-linear-gradient(135deg, transparent 0 18px, rgba(24, 33, 43, 0.035) 18px 19px);
+}
+
+:root[data-theme="porcelain"] .paisa-logo.login {
+  border-color: rgba(34, 49, 66, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.82);
+}
+
+:root[data-theme="porcelain"] .login-card h1,
+:root[data-theme="porcelain"] .login-partner strong,
+:root[data-theme="porcelain"] .login-field {
+  color: var(--ink);
+}
+
+:root[data-theme="porcelain"] .login-partner {
+  border-color: rgba(34, 49, 66, 0.14);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(237, 244, 240, 0.88)),
+    #ffffff;
+}
+
+:root[data-theme="porcelain"] .login-partner span,
+:root[data-theme="porcelain"] .login-partner small {
+  color: #526273;
 }
 
 :root[data-theme="porcelain"] .sidebar-brand strong,

@@ -22,25 +22,38 @@ type AuthContext struct {
 }
 
 type PartnerUser struct {
-	ID        string    `json:"id"`
-	PartnerID string    `json:"partnerId"`
-	Email     string    `json:"email"`
-	Name      string    `json:"name"`
-	Role      string    `json:"role"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID           string    `json:"id"`
+	PartnerID    string    `json:"partnerId"`
+	Email        string    `json:"email"`
+	Name         string    `json:"name"`
+	PasswordHash string    `json:"-"`
+	Role         string    `json:"role"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type LoginRequest struct {
-	PartnerKey string `json:"partnerKey"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type LoginResult struct {
 	Token   string      `json:"token"`
 	Auth    AuthContext `json:"auth"`
+	Partner Partner     `json:"partner"`
+	User    PartnerUser `json:"user"`
+}
+
+type PartnerOnboardRequest struct {
+	PartnerKey    string `json:"partnerKey"`
+	PartnerName   string `json:"partnerName"`
+	AdminEmail    string `json:"adminEmail"`
+	AdminName     string `json:"adminName"`
+	AdminPassword string `json:"adminPassword"`
+}
+
+type PartnerOnboardResult struct {
 	Partner Partner     `json:"partner"`
 	User    PartnerUser `json:"user"`
 }

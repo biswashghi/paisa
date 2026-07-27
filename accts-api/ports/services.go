@@ -13,7 +13,9 @@ type PartnerService interface {
 }
 
 type AuthService interface {
+	OnboardPartner(context.Context, domain.PartnerOnboardRequest) (domain.PartnerOnboardResult, error)
 	Login(context.Context, domain.LoginRequest) (domain.LoginResult, error)
+	Logout(context.Context, string) error
 	AuthenticateToken(context.Context, string) (domain.AuthContext, error)
 	CreateAPIKey(context.Context, domain.AuthContext, domain.APIKeyCreateRequest) (domain.APIKeyCreateResult, error)
 	ListAPIKeys(context.Context, domain.AuthContext) ([]domain.APIKey, error)

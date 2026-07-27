@@ -18,13 +18,14 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(saved?.isLoggedIn && localStorage.getItem("paisa.partnerPortal.token")));
   const [activeView, setActiveView] = useState("dashboard");
   const [partnerKey, setPartnerKey] = useState(saved?.partnerKey || defaultPartner.partnerKey);
+  const [loginEmail, setLoginEmail] = useState(saved?.loginEmail || "admin@acme-retail.test");
+  const [loginPassword, setLoginPassword] = useState("");
   const [partner, setPartner] = useState(defaultPartner);
   const [programs, setPrograms] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
   const [redemptions, setRedemptions] = useState([]);
-  const [locations, setLocations] = useState([]);
   const [apiKeys, setApiKeys] = useState([]);
   const [latestApiToken, setLatestApiToken] = useState("");
   const [connections, setConnections] = useState([]);
@@ -41,6 +42,20 @@ export default function App() {
     () => programs.find((program) => program.id === selectedProgramId) || programs[0],
     [programs, selectedProgramId],
   );
+  const setupStatus = useMemo(() => {
+    const publishedPrograms = programs.filter((program) => program.status === "published").length;
+    return {
+      hasProgram: programs.length > 0,
+      hasRules: publishedPrograms > 0,
+      hasReward: (dashboardSummary?.activeCatalogItems || 0) > 0,
+      hasCheckoutTest: transactions.length > 0,
+    };
+  }, [dashboardSummary, programs, transactions]);
+  const setupComplete = setupStatus.hasProgram
+    && setupStatus.hasRules
+    && setupStatus.hasReward
+    && setupStatus.hasCheckoutTest;
+  const setupLocked = isLoggedIn && !setupComplete;
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -52,6 +67,12 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     persistSession({ theme });
   }, [theme]);
+
+  useEffect(() => {
+    if (setupLocked && activeView !== "setup") {
+      setActiveView("setup");
+    }
+  }, [activeView, setupLocked]);
 
   function persistSession(next = {}) {
     localStorage.setItem("paisa.partnerPortal", JSON.stringify({
@@ -79,21 +100,20 @@ export default function App() {
     }
   }
 
-  async function login(nextPartnerKey) {
-    const key = nextPartnerKey || partnerKey;
+  async function login(credentials) {
     await runAction("Partner workspace loaded from API.", async () => {
       const loginResult = await api.login({
-        partnerKey: key,
-        email: `${key}@paisa.local`,
-        name: "Partner Admin",
+        email: credentials.email,
+        password: credentials.password,
       });
       api.setAuthToken(loginResult.token);
       const apiPartner = loginResult.partner;
-      setPartnerKey(key);
+      setPartnerKey(apiPartner.partnerKey);
       setPartner(toUiPartner(apiPartner));
       setIsLoggedIn(true);
-      persistSession({ isLoggedIn: true, partnerKey: key, token: true, theme });
-      await loadWorkspace(key, apiPartner);
+      setLoginPassword("");
+      persistSession({ isLoggedIn: true, partnerKey: apiPartner.partnerKey, loginEmail: credentials.email, token: true, theme });
+      await loadWorkspace(apiPartner.partnerKey, apiPartner);
     });
   }
 
@@ -133,11 +153,10 @@ export default function App() {
   }
 
   async function loadMerchantOps() {
-    const [summary, items, redemptionList, locationList, keys, connectionList, campaignList] = await Promise.all([
+    const [summary, items, redemptionList, keys, connectionList, campaignList] = await Promise.all([
       api.dashboardSummary().catch(() => null),
       api.listCatalogItems().catch(() => []),
       api.listRedemptions().catch(() => []),
-      api.listLocations().catch(() => []),
       api.listApiKeys().catch(() => []),
       api.listIntegrationConnections().catch(() => []),
       api.listCampaigns().catch(() => []),
@@ -145,11 +164,10 @@ export default function App() {
     setDashboardSummary(summary);
     setCatalogItems(items);
     setRedemptions(redemptionList);
-    setLocations(locationList);
     setApiKeys(keys);
     setConnections(connectionList);
     setCampaigns(campaignList);
-    return { summary, items, redemptionList, locationList, keys, connectionList, campaignList };
+    return { summary, items, redemptionList, keys, connectionList, campaignList };
   }
 
   async function createProgram() {
@@ -391,13 +409,6 @@ export default function App() {
     });
   }
 
-  async function createLocation(body) {
-    await runAction("Location created.", async () => {
-      await api.createLocation(body);
-      await loadMerchantOps();
-    });
-  }
-
   async function createCampaign(body) {
     await runAction("Campaign created.", async () => {
       await api.createCampaign(body);
@@ -411,7 +422,58 @@ export default function App() {
   }
 
   if (!isLoggedIn) {
-    return <Login partner={partner} partnerKey={partnerKey} apiBaseUrl={api.baseUrl} error={error} loading={loading} onLogin={login} onPartnerKeyChange={setPartnerKey} />;
+    return (
+      <Login
+        apiBaseUrl={api.baseUrl}
+        email={loginEmail}
+        password={loginPassword}
+        error={error}
+        loading={loading}
+        onLogin={login}
+        onEmailChange={setLoginEmail}
+        onPasswordChange={setLoginPassword}
+      />
+    );
+  }
+
+  if (setupLocked) {
+    return (
+      <div className="setup-only-shell">
+        <main className="content setup-only-content">
+          {notice || error ? (
+            <div className={error ? "notice-bar error" : "notice-bar"}>
+              <span>{error || notice}</span>
+            </div>
+          ) : null}
+          <Onboarding
+            partner={partner}
+            programs={programs}
+            transactions={transactions}
+            dashboardSummary={dashboardSummary}
+            catalogItems={catalogItems}
+            cashier={cashier}
+            setupLocked
+            selectedProgram={selectedProgram}
+            redemptions={redemptions}
+            onCreateProgram={createProgram}
+            onUpdateProgram={updateProgram}
+            onCreateRulePackage={createRulePackage}
+            onPublishProgramRules={publishProgramRules}
+            onUpdateRulePackage={updateRulePackage}
+            onPublishRulePackage={publishRulePackage}
+            onCreateCatalogItem={createCatalogItem}
+            onChangeView={setActiveView}
+            onResolveMember={resolveCashierMember}
+            onCreateTransaction={createCashierTransaction}
+            onCreateRedemption={createRedemption}
+            onValidateRedemption={validateRedemption}
+            onCaptureRedemption={captureRedemption}
+            onReleaseRedemption={releaseRedemption}
+            onLogout={logout}
+          />
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -476,12 +538,18 @@ export default function App() {
               partner={partner}
               programs={programs}
               transactions={transactions}
-              locations={locations}
               dashboardSummary={dashboardSummary}
               catalogItems={catalogItems}
               cashier={cashier}
-              onCreateLocation={createLocation}
               onCreateProgram={createProgram}
+              selectedProgram={selectedProgram}
+              redemptions={redemptions}
+              onUpdateProgram={updateProgram}
+              onCreateRulePackage={createRulePackage}
+              onPublishProgramRules={publishProgramRules}
+              onUpdateRulePackage={updateRulePackage}
+              onPublishRulePackage={publishRulePackage}
+              onCreateCatalogItem={createCatalogItem}
               onChangeView={setActiveView}
               onResolveMember={resolveCashierMember}
               onCreateTransaction={createCashierTransaction}
@@ -493,11 +561,9 @@ export default function App() {
           ) : null}
           {activeView === "settings" ? (
             <Settings
-              locations={locations}
               apiKeys={apiKeys}
               latestApiToken={latestApiToken}
               connections={connections}
-              onCreateLocation={createLocation}
               onCreateApiKey={createApiKey}
               onStartSquare={startSquare}
               onSyncConnection={syncConnection}

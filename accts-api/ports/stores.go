@@ -36,8 +36,10 @@ type PartnerStore interface {
 }
 
 type AuthStore interface {
-	UpsertPartnerUser(context.Context, string, string, string) (domain.PartnerUser, error)
+	UpsertPartnerUserWithPassword(context.Context, string, string, string, string) (domain.PartnerUser, error)
+	PartnerUserByEmail(context.Context, string) (domain.Partner, domain.PartnerUser, error)
 	CreateSession(context.Context, string, string, string, time.Time) error
+	RevokeSessionHash(context.Context, string) error
 	AuthBySessionHash(context.Context, string) (domain.AuthContext, error)
 	CreateAPIKey(context.Context, string, string, string, string, []string) (domain.APIKey, error)
 	AuthByAPIKeyHash(context.Context, string) (domain.AuthContext, error)

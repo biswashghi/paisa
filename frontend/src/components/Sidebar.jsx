@@ -6,7 +6,7 @@ const items = [
   ["programs", "03", "Programs", "Rules + rewards"],
   ["members", "04", "Members", "Enrollments"],
   ["activity", "05", "Activity", "Transactions"],
-  ["settings", "06", "Settings", "Keys + locations"],
+  ["settings", "06", "Settings", "Keys + integrations"],
 ];
 
 export default function Sidebar({ activeView, onChangeView }) {

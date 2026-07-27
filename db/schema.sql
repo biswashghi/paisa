@@ -15,12 +15,16 @@ CREATE TABLE IF NOT EXISTS paisa.partner_users (
     partner_id UUID NOT NULL REFERENCES paisa.partners(id),
     email TEXT NOT NULL,
     name TEXT NOT NULL,
+    password_hash TEXT,
     role TEXT NOT NULL DEFAULT 'admin',
     status TEXT NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (partner_id, email)
 );
+
+ALTER TABLE paisa.partner_users
+ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 CREATE TABLE IF NOT EXISTS paisa.sessions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
