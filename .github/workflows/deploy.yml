@@ -102,6 +102,7 @@ jobs:
         env:
           PAISA_POSTGRES_PASSWORD: paisa-ci-password
           PAISA_API_DOMAIN: api.paisa.example.com
+          PAISA_INTERNAL_ADMIN_TOKEN: paisa-ci-internal-admin-token
           PAISA_WEB_DOMAIN: paisa.example.com
         run: docker compose -f docker-compose.prod.yml config
 
@@ -139,12 +140,14 @@ jobs:
           HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
           HETZNER_USER: ${{ secrets.HETZNER_USER }}
           PAISA_API_DOMAIN: ${{ vars.PAISA_API_DOMAIN }}
+          PAISA_INTERNAL_ADMIN_TOKEN: ${{ secrets.PAISA_INTERNAL_ADMIN_TOKEN }}
           PAISA_POSTGRES_PASSWORD: ${{ secrets.PAISA_POSTGRES_PASSWORD }}
           PAISA_WEB_DOMAIN: ${{ vars.PAISA_WEB_DOMAIN }}
         run: |
           test -n "$HETZNER_USER"
           test -n "$PAISA_API_DOMAIN"
           test -n "$PAISA_WEB_DOMAIN"
+          test -n "$PAISA_INTERNAL_ADMIN_TOKEN"
           test -n "$PAISA_POSTGRES_PASSWORD"
           ./scripts/deploy-vps.sh \
             "$HETZNER_USER" \
