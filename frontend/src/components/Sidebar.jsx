@@ -2,11 +2,10 @@ import PaisaLogo from "./PaisaLogo.jsx";
 
 const items = [
   ["dashboard", "01", "Dashboard", "Status"],
-  ["setup", "02", "Setup", "Checklist"],
-  ["programs", "03", "Programs", "Rules + rewards"],
-  ["members", "04", "Members", "Enrollments"],
-  ["activity", "05", "Activity", "Transactions"],
-  ["settings", "06", "Settings", "Access"],
+  ["programs", "02", "Programs", "Rules + rewards"],
+  ["members", "03", "Members", "Enrollments"],
+  ["activity", "04", "Activity", "Transactions"],
+  ["settings", "05", "Settings", "Access"],
 ];
 
 export default function Sidebar({ activeView, onChangeView }) {

@@ -1,14 +1,13 @@
 import SummaryCard from "./SummaryCard.jsx";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Dashboard({ programs, enrollments, transactions, dashboardSummary, selectedProgramId, onSelectProgram, onCreateProgram, onChangeView }) {
+export default function Dashboard({ programs, enrollments, transactions, selectedProgramId, onSelectProgram, onChangeView }) {
   const selected = programs.find((program) => program.id === selectedProgramId) || programs[0] || emptyProgram;
   const totalMembers = enrollments.length;
   const activeMembers = enrollments.filter((enrollment) => enrollment.status === "active").length;
   const earnedThisMonth = transactions.filter((transaction) => transaction.points > 0).reduce((sum, transaction) => sum + transaction.points, 0);
   const totalLiability = programs.reduce((sum, program) => sum + program.liabilityPoints, 0);
   const published = programs.filter((program) => program.status === "published").length;
-  const activeCatalogItems = dashboardSummary?.activeCatalogItems || 0;
   const pendingEnrollments = enrollments.filter((enrollment) => enrollment.status !== "active").length;
   const membersWithAddOns = enrollments.filter((enrollment) => (enrollment.addOns || []).length > 0).length;
   const membershipByProgram = programs.map((program) => ({
@@ -21,49 +20,12 @@ export default function Dashboard({ programs, enrollments, transactions, dashboa
   const healthyRules = selectedRules.filter((rule) => rule.status === "active").length;
   const ruleWarnings = selected.validationScore >= 100 ? 0 : Math.max(1, selectedRules.length - healthyRules);
 
-  if (programs.length === 0) {
-    return (
-      <section className="view-stack">
-        <LaunchChecklist
-          partnerKey={dashboardSummary?.partner?.partnerKey}
-          programs={programs}
-          published={published}
-          activeCatalogItems={activeCatalogItems}
-          transactions={transactions}
-          onCreateProgram={onCreateProgram}
-          onChangeView={onChangeView}
-        />
-      </section>
-    );
-  }
-
   return (
     <section className="view-stack">
-      {published === 0 || activeCatalogItems === 0 || transactions.length === 0 ? (
-        <LaunchChecklist
-          partnerKey={dashboardSummary?.partner?.partnerKey}
-          programs={programs}
-          published={published}
-          activeCatalogItems={activeCatalogItems}
-          transactions={transactions}
-          onCreateProgram={onCreateProgram}
-          onChangeView={onChangeView}
-        />
-      ) : null}
-
       <div className="dashboard-command-bar">
         <div>
           <p className="eyebrow">Dashboard</p>
           <h2>Status</h2>
-        </div>
-        <div className="command-flow">
-          <span>Purchase</span>
-          <span>Rules</span>
-          <span>Ledger</span>
-        </div>
-        <div className="dashboard-actions">
-          <button type="button" onClick={() => onChangeView("programs")}>Rules</button>
-          <button className="primary" type="button" onClick={onCreateProgram}>Create program</button>
         </div>
       </div>
 
@@ -151,66 +113,6 @@ export default function Dashboard({ programs, enrollments, transactions, dashboa
           ))}
         </div>
       </section>
-    </section>
-  );
-}
-
-function LaunchChecklist({ partnerKey, programs, published, activeCatalogItems, transactions, onCreateProgram, onChangeView }) {
-  const steps = [
-    {
-      label: "Program",
-      detail: programs.length ? `${programs.length} configured` : "Create the first program.",
-      done: programs.length > 0,
-      action: "Create program",
-      onClick: onCreateProgram,
-    },
-    {
-      label: "Rules",
-      detail: published ? `${published} published` : "Publish earning rules.",
-      done: published > 0,
-      action: "Edit rules",
-      onClick: () => onChangeView("programs"),
-    },
-    {
-      label: "Reward",
-      detail: activeCatalogItems ? `${activeCatalogItems} active` : "Add a reward.",
-      done: activeCatalogItems > 0,
-      action: "Add reward",
-      onClick: () => onChangeView("programs"),
-    },
-    {
-      label: "Test",
-      detail: transactions.length ? `${transactions.length} recorded` : "Run checkout.",
-      done: transactions.length > 0,
-      action: "Open cashier",
-      onClick: () => onChangeView("setup"),
-    },
-  ];
-  const next = steps.find((step) => !step.done);
-
-  return (
-    <section className="launch-panel">
-      <div className="launch-copy">
-        <p className="eyebrow">{partnerKey || "Partner"}</p>
-        <h2>Launch checklist</h2>
-      </div>
-      <div className="launch-steps">
-        {steps.map((step, index) => (
-          <article className={step.done ? "launch-step done" : "launch-step"} key={step.label}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <div>
-              <strong>{step.label}</strong>
-              <small>{step.detail}</small>
-            </div>
-            <StatusPill value={step.done ? "ready" : "todo"} />
-          </article>
-        ))}
-      </div>
-      <div className="launch-actions">
-        <button className="primary" type="button" onClick={next?.onClick || (() => onChangeView("setup"))}>
-          {next?.action || "Open setup"}
-        </button>
-      </div>
     </section>
   );
 }

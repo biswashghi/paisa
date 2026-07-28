@@ -17,7 +17,7 @@ export const initialPrograms = [
     liabilityPoints: 12845630,
     validationScore: 98.7,
     rules: {
-      earnBasis: "eligible",
+      earnBasis: "total",
       groups: [
         {
           id: "group-gold-max",
@@ -83,7 +83,7 @@ export const initialPrograms = [
     liabilityPoints: 4250400,
     validationScore: 91.2,
     rules: {
-      earnBasis: "eligible",
+      earnBasis: "total",
       groups: [
         {
           id: "group-everyday-stack",

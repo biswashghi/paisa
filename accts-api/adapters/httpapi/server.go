@@ -91,6 +91,8 @@ func NewRouter(services Services) *mux.Router {
 	partnerAuthed.HandleFunc("/me", server.partnerMe).Methods("GET")
 	partnerAuthed.HandleFunc("/programs", server.partnerCreateProgram).Methods("POST")
 	partnerAuthed.HandleFunc("/programs", server.partnerListPrograms).Methods("GET")
+	partnerAuthed.HandleFunc("/programs/{programId}", server.partnerUpdateProgram).Methods("PATCH")
+	partnerAuthed.HandleFunc("/programs/{programId}", server.partnerDeleteDraftProgram).Methods("DELETE")
 	partnerAuthed.HandleFunc("/programs/{programId}/rule-versions", server.partnerCreateRuleVersion).Methods("POST")
 	partnerAuthed.HandleFunc("/programs/{programId}/rule-versions", server.partnerListRuleVersions).Methods("GET")
 	partnerAuthed.HandleFunc("/programs/{programId}/rule-versions/{versionId}", server.partnerGetRuleVersionReview).Methods("GET")
@@ -373,6 +375,20 @@ func (s Server) partnerCreateProgram(w http.ResponseWriter, r *http.Request) {
 func (s Server) partnerListPrograms(w http.ResponseWriter, r *http.Request) {
 	programs, err := s.services.Programs.ListPrograms(r.Context(), authFromContext(r.Context()).PartnerKey)
 	respond(w, http.StatusOK, programs, err)
+}
+
+func (s Server) partnerUpdateProgram(w http.ResponseWriter, r *http.Request) {
+	var body domain.ProgramRequest
+	if !decode(w, r, &body) {
+		return
+	}
+	program, err := s.services.Programs.UpdateProgram(r.Context(), authFromContext(r.Context()).PartnerKey, vars(r)["programId"], body)
+	respond(w, http.StatusOK, program, err)
+}
+
+func (s Server) partnerDeleteDraftProgram(w http.ResponseWriter, r *http.Request) {
+	err := s.services.Programs.DeleteDraftProgram(r.Context(), authFromContext(r.Context()).PartnerKey, vars(r)["programId"])
+	respond(w, http.StatusOK, map[string]string{"status": "deleted"}, err)
 }
 
 func (s Server) partnerCreateRuleVersion(w http.ResponseWriter, r *http.Request) {

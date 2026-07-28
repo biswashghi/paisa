@@ -1,0 +1,236 @@
+@keyframes orbitPulse {
+  0%, 100% {
+    opacity: 0.52;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.03);
+  }
+}
+
+@keyframes cardFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes trackFlow {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 0 160px;
+  }
+}
+
+@keyframes activeOrb {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 127, 121, 0.24);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 127, 121, 0.08);
+  }
+}
+
+@keyframes viewRise {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tabSignal {
+  0% {
+    background-position: -180px 0;
+    opacity: 0.42;
+  }
+
+  50% {
+    opacity: 0.86;
+  }
+
+  100% {
+    background-position: 180px 0;
+    opacity: 0.42;
+  }
+}
+
+@keyframes statusBreathe {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(36, 122, 72, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(36, 122, 72, 0.06);
+  }
+}
+
+@keyframes navPulse {
+  0%, 100% {
+    transform: scaleY(0.84);
+    opacity: 0.68;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes canvasSignal {
+  0%, 72%, 100% {
+    transform: translateX(-105%);
+    opacity: 0;
+  }
+
+  18%, 42% {
+    opacity: 1;
+  }
+
+  54% {
+    transform: translateX(105%);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-one,
+  .ring-two,
+  .orbit-card,
+  .onboarding-track::before,
+  .onboarding-step.active .step-orb,
+  .program-build-steps::before,
+  .program-build-steps button.active > span,
+  .program-tab.selected::after,
+  .program-build-panel,
+  .status-pill.good,
+  .sidebar nav button.active .nav-dot,
+  .rule-canvas::before,
+  .view-stack > .panel,
+  .view-stack > .view-header,
+  .summary-grid > *,
+  .dashboard-layout > *,
+  .split-layout > *,
+  .member-detail-layout > *,
+  .program-tab-strip {
+    animation: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .app-shell,
+  .dashboard-layout,
+  .split-layout,
+  .rule-workspace,
+  .member-detail-layout,
+  .graph-branch,
+  .ops-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .summary-grid.large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .welcome-hero,
+  .onboarding-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .earn-example-grid,
+  .edge-case-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onboarding-rail {
+    position: static;
+  }
+
+  .architecture-map,
+  .member-rule-map,
+  .cashier-layout,
+  .setup-grid,
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rule-edit-card,
+  .member-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar,
+  .hero-panel,
+  .view-header,
+  .context-strip,
+  .program-command-card,
+  .member-profile-header,
+  .package-toolbar {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .command-search {
+    width: 100%;
+  }
+
+  .earn-explainer-grid,
+  .earn-example-grid,
+  .edge-case-list,
+  .rule-example-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid,
+  .summary-grid.large,
+  .program-strip,
+  .program-builder-grid,
+  .form-grid,
+  .health-grid,
+  .table-row,
+  .activity-table .table-row,
+  .program-enrollment-table .table-row,
+  .program-activity-table .table-row,
+  .member-history-table .table-row,
+  .redemption-table .table-row,
+  .rule-edit-card,
+  .member-card,
+  .program-stat-row,
+  .architecture-map,
+  .package-board,
+  .rule-card-grid,
+  .member-rule-map,
+  .cashier-layout,
+  .setup-grid,
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .program-step-footer,
+  .program-publish-bar,
+  .rule-setup-banner,
+  .setup-inline-heading {
+    display: grid;
+  }
+}
+

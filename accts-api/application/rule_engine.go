@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"math"
 	"sort"
 	"time"
 
@@ -168,8 +169,8 @@ func evaluateRuleCandidate(ctx context.Context, stores ports.StoreSet, event dom
 	case domain.RuleTypeFixedPerTransaction, domain.RuleTypeFirstPurchaseBonus, domain.RuleTypeSpendWindowBonus:
 		points = domain.ConfigInt(rule.Formula, "points", "fixedPoints")
 	default:
-		pointsPerDollar := domain.ConfigInt(rule.Formula, "points_per_dollar", "pointsPerDollar")
-		points = (basis / 100) * pointsPerDollar
+		pointsPerDollar := domain.ConfigFloat(rule.Formula, "points_per_dollar", "pointsPerDollar")
+		points = pointsForBasis(basis, pointsPerDollar)
 	}
 	candidate.RawPoints = points
 	candidate.Points = points
@@ -188,11 +189,11 @@ func evaluateRuleCandidate(ctx context.Context, stores ports.StoreSet, event dom
 			if candidate.BasisAmountMinor > remainingBasis {
 				candidate.Exhausted = true
 				candidate.BasisAmountMinor = remainingBasis
-				pointsPerDollar := domain.ConfigInt(rule.Formula, "points_per_dollar", "pointsPerDollar")
+				pointsPerDollar := domain.ConfigFloat(rule.Formula, "points_per_dollar", "pointsPerDollar")
 				if pointsPerDollar == 0 {
 					pointsPerDollar = 1
 				}
-				candidate.Points = (remainingBasis / 100) * pointsPerDollar
+				candidate.Points = pointsForBasis(remainingBasis, pointsPerDollar)
 			}
 			candidate.UsageBasis = candidate.BasisAmountMinor
 			candidate.UsagePoints = candidate.Points
@@ -210,6 +211,13 @@ func evaluateRuleCandidate(ctx context.Context, stores ports.StoreSet, event dom
 		}
 	}
 	return candidate, nil
+}
+
+func pointsForBasis(basisMinor int, pointsPerDollar float64) int {
+	if basisMinor <= 0 || pointsPerDollar <= 0 {
+		return 0
+	}
+	return int(math.Floor((float64(basisMinor) / 100) * pointsPerDollar))
 }
 
 func eligibleForRule(ctx context.Context, stores ports.StoreSet, event domain.RewardProcessingEvent, rule domain.RuleGraphRule) (bool, error) {

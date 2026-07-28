@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import StatusPill from "./StatusPill.jsx";
 
-export default function Rewards({ catalogItems, redemptions, programs, onCreateCatalogItem, embedded = false }) {
-  const [form, setForm] = useState({ name: "Free coffee", pointsCost: 100, description: "Manual POS discount after Paisa validation.", programId: "" });
+export default function Rewards({ catalogItems, redemptions, programs, onCreateCatalogItem, embedded = false, selectedProgramId = "", setupMode = false }) {
+  const [form, setForm] = useState({ name: "Free coffee", pointsCost: 100, description: "Manual POS discount after Paisa validation.", programId: selectedProgramId });
+  const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+
+  useEffect(() => {
+    if (selectedProgramId) {
+      setForm((current) => ({ ...current, programId: selectedProgramId }));
+    }
+  }, [selectedProgramId]);
 
   function submit() {
     onCreateCatalogItem({
@@ -25,6 +32,16 @@ export default function Rewards({ catalogItems, redemptions, programs, onCreateC
         </div>
       ) : null}
       <section className="panel spacious">
+        {setupMode ? (
+          <div className="setup-inline-heading">
+            <div>
+              <p className="eyebrow">Reward draft</p>
+              <h3>Create one redeemable reward</h3>
+              <span>The program can be published after it has earning rules and at least one active reward.</span>
+            </div>
+            {selectedProgram ? <StatusPill value={selectedProgram.status} /> : null}
+          </div>
+        ) : null}
         <div className="form-grid">
           <label>
             Name

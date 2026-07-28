@@ -38,6 +38,8 @@ export const api = {
   me: () => request("/partner/v1/me"),
 
   createProgram: (body) => request("/partner/v1/programs", { method: "POST", body: JSON.stringify(body) }),
+  updateProgram: (programId, body) => request(`/partner/v1/programs/${programId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteProgram: (programId) => request(`/partner/v1/programs/${programId}`, { method: "DELETE" }),
   listPrograms: () => request("/partner/v1/programs"),
 
   createRuleVersion: (programId, body) => request(`/partner/v1/programs/${programId}/rule-versions`, { method: "POST", body: JSON.stringify(body) }),

@@ -50,6 +50,8 @@ type AuthStore interface {
 
 type ProgramStore interface {
 	Create(context.Context, string, domain.ProgramRequest) (domain.Program, error)
+	Update(context.Context, string, string, domain.ProgramRequest) (domain.Program, error)
+	DeleteDraft(context.Context, string, string) error
 	List(context.Context, string) ([]domain.Program, error)
 	EnsurePartner(context.Context, string, string) error
 	NextRuleVersionNumber(context.Context, string, string) (int, error)

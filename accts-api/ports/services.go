@@ -24,6 +24,8 @@ type AuthService interface {
 
 type ProgramService interface {
 	CreateProgram(context.Context, string, domain.ProgramRequest) (domain.Program, error)
+	UpdateProgram(context.Context, string, string, domain.ProgramRequest) (domain.Program, error)
+	DeleteDraftProgram(context.Context, string, string) error
 	ListPrograms(context.Context, string) ([]domain.Program, error)
 	CreateRuleVersion(context.Context, string, string, domain.RuleVersionRequest) (domain.RuleVersion, error)
 	CreateRulePackage(context.Context, string, string, domain.RuleVersionRequest) (domain.RuleVersion, error)

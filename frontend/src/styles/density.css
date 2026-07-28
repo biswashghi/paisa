@@ -1,0 +1,597 @@
+/* Calm density pass: keep the cinematic skin, make it easier to read. */
+:root {
+  --ink: #f4f7fb;
+  --text: #c9d3df;
+  --muted: #9aa8ba;
+  --shadow: 0 22px 54px rgba(0, 0, 0, 0.26);
+  --shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+body {
+  font-size: 14px;
+}
+
+button {
+  min-height: 34px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 11px;
+}
+
+button.primary {
+  font-weight: 650;
+}
+
+input,
+select {
+  min-height: 35px;
+  font-size: 12px;
+  padding: 7px 9px;
+}
+
+label {
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.eyebrow {
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 620;
+}
+
+h2 {
+  font-size: 24px;
+  font-weight: 620;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 620;
+}
+
+.app-shell {
+  grid-template-columns: 256px minmax(0, 1fr);
+}
+
+.sidebar {
+  gap: 11px;
+  padding: 14px 11px;
+}
+
+.sidebar-brand {
+  min-height: 58px;
+}
+
+.sidebar-brand strong {
+  font-size: 20px;
+  font-weight: 560;
+}
+
+.sidebar-snapshot {
+  gap: 4px;
+  padding: 10px;
+}
+
+.sidebar-snapshot strong {
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.sidebar nav {
+  gap: 4px;
+}
+
+.sidebar nav button {
+  grid-template-columns: 29px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px;
+}
+
+.sidebar nav strong {
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.sidebar nav small {
+  font-size: 11px;
+}
+
+.nav-index {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar-footer {
+  padding: 12px 6px 2px;
+}
+
+.topbar {
+  gap: 14px;
+  padding: 11px 16px;
+}
+
+.topbar-title {
+  min-width: 190px;
+}
+
+.context-strip {
+  gap: 7px;
+}
+
+.context-strip > div,
+.command-search {
+  min-width: 126px;
+  padding: 6px 8px;
+}
+
+.context-strip strong {
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.context-strip span,
+.command-search span {
+  color: #a9b7c8;
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.content {
+  padding: 16px;
+}
+
+.view-stack {
+  gap: 12px;
+}
+
+.dashboard-command-bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--theme-panel-bg, rgba(13, 19, 31, 0.8));
+  box-shadow: var(--shadow-sm);
+  padding: 12px;
+}
+
+.dashboard-command-bar h2 {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.hero-panel,
+.view-header {
+  gap: 14px;
+  padding: 14px;
+}
+
+.dashboard-command {
+  grid-template-columns: minmax(320px, 0.66fr) minmax(300px, 0.56fr) minmax(210px, auto);
+  min-height: 228px;
+}
+
+.hero-copy h2 {
+  max-width: 430px;
+  font-size: clamp(30px, 3vw, 43px);
+  font-weight: 520;
+  line-height: 1.02;
+}
+
+.hero-subcopy {
+  max-width: 420px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #c0ccda;
+}
+
+.command-steps {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.command-steps span,
+.studio-scope-line span,
+.graph-legend span {
+  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hero-actions,
+.button-row {
+  gap: 6px;
+}
+
+.loyalty-visual {
+  min-height: 200px;
+}
+
+.flow-card {
+  width: 126px;
+  padding: 9px;
+  z-index: 1;
+}
+
+.flow-card span {
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.flow-card strong {
+  font-size: 15px;
+  font-weight: 560;
+}
+
+.flow-card-a {
+  top: 24px;
+  left: 22px;
+}
+
+.flow-card-b {
+  top: 82px;
+  right: 28px;
+}
+
+.flow-card-c {
+  left: 54px;
+  bottom: 24px;
+}
+
+.flow-line-a {
+  top: 82px;
+  left: 128px;
+  width: 138px;
+}
+
+.flow-line-b {
+  right: 128px;
+  bottom: 72px;
+  width: 138px;
+}
+
+.summary-grid,
+.summary-grid.large,
+.dashboard-layout,
+.split-layout,
+.rule-workspace,
+.ops-grid,
+.program-strip,
+.cashier-layout,
+.setup-grid,
+.card-grid {
+  gap: 10px;
+}
+
+.summary-grid.large {
+  grid-template-columns: repeat(7, minmax(118px, 1fr));
+}
+
+.summary-card,
+.summary-grid > div {
+  min-height: 112px;
+  gap: 5px;
+  padding: 12px;
+}
+
+.summary-card span,
+.summary-grid > div span,
+.program-tile span,
+.list-item span,
+.program-stat-row span,
+.member-rule-map span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.summary-card strong,
+.summary-grid > div strong {
+  font-size: clamp(21px, 1.8vw, 30px);
+  font-weight: 560;
+}
+
+.summary-card small {
+  font-size: 12px;
+}
+
+.panel.spacious {
+  padding: 12px;
+}
+
+.section-heading {
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.program-tile,
+.list-item {
+  gap: 6px;
+  min-height: 96px;
+  padding: 11px;
+}
+
+.program-tile strong,
+.list-item strong {
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.program-selector-strip .list-item {
+  min-height: 74px;
+}
+
+.distribution-list,
+.rule-summary-list,
+.addon-grid {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.distribution-list article,
+.distribution-list div,
+.rule-summary-list article,
+.addon-card,
+.architecture-map article,
+.package-board article,
+.member-rule-map article,
+.cashier-member,
+.redemption-ticket,
+.secret-box,
+.mini-card {
+  gap: 6px;
+  padding: 10px;
+}
+
+.architecture-map {
+  gap: 8px;
+}
+
+.architecture-map article {
+  min-height: 114px;
+}
+
+.architecture-map span {
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.action-rail {
+  gap: 8px;
+}
+
+.tab-row {
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.tab-row button.active {
+  font-weight: 650;
+}
+
+.program-command-card,
+.member-profile-header,
+.package-toolbar {
+  gap: 10px;
+  padding: 11px;
+}
+
+.program-stat-row {
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.program-stat-row div {
+  padding: 9px;
+}
+
+.program-stat-row strong {
+  font-size: 18px;
+  font-weight: 560;
+}
+
+.health-grid {
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.score-ring {
+  width: 112px;
+  height: 112px;
+  border-width: 11px;
+}
+
+.score-ring strong {
+  font-size: 18px;
+  font-weight: 560;
+}
+
+.issue-list {
+  gap: 7px;
+}
+
+.issue-list div {
+  padding: 8px;
+}
+
+.table-row {
+  gap: 9px;
+  padding: 9px 11px;
+  font-size: 12px;
+}
+
+.table-row.table-head {
+  min-height: 30px;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.table-row strong {
+  font-weight: 620;
+}
+
+.table-row span {
+  color: #a7b5c7;
+}
+
+.sidebar-brand span,
+.sidebar-footer span,
+.sidebar-footer small,
+.sidebar-snapshot span,
+.sidebar-snapshot small,
+.sidebar nav small {
+  color: #aebdcc;
+}
+
+.status-pill {
+  min-height: 22px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.form-grid {
+  gap: 9px;
+}
+
+.list-panel {
+  gap: 8px;
+  padding: 10px;
+}
+
+.rule-canvas-panel {
+  min-height: 460px;
+}
+
+.rule-canvas {
+  gap: 24px;
+  min-height: 360px;
+  padding: 20px;
+}
+
+.graph-branch {
+  gap: 14px;
+}
+
+.graph-node {
+  gap: 6px;
+  padding: 12px;
+}
+
+.graph-node strong {
+  font-weight: 620;
+}
+
+.rule-edit-card {
+  gap: 8px;
+  padding: 10px;
+}
+
+.member-detail-layout {
+  gap: 12px;
+}
+
+.member-card {
+  gap: 10px;
+  padding: 10px;
+}
+
+.member-card strong {
+  font-weight: 620;
+}
+
+.member-card span {
+  font-size: 12px;
+}
+
+.member-rule-map {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 1180px) {
+  .onboarding-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-command-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-command {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid.large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+
+  .topbar {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .context-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .context-strip > div,
+  .command-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .command-search {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-command {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-focus-panel {
+    min-height: 0;
+  }
+
+  .setup-editor-card {
+    max-width: none;
+  }
+
+  .hero-copy h2 {
+    font-size: 34px;
+  }
+
+  .summary-card,
+  .summary-grid > div {
+    min-height: 96px;
+  }
+}
+

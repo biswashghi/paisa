@@ -6,15 +6,50 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
   const [moveProgramId, setMoveProgramId] = useState("");
   const [moveReason, setMoveReason] = useState("");
   const selected = enrollments.find((enrollment) => enrollment.id === selectedId) || enrollments[0];
+  const memberTransactions = useMemo(
+    () => selected ? transactions.filter((transaction) => transaction.member === selected.member) : [],
+    [transactions, selected],
+  );
+
   if (!selected) {
     return (
       <section className="view-stack">
         <div className="view-header">
           <div>
             <p className="eyebrow">Member rewards profile</p>
-            <h2>No members exist for this partner yet.</h2>
+            <h2>No members exist yet.</h2>
+            <p className="helper-copy">
+              Customers become members when they are enrolled into a program. Partners can start enrollment
+              from their POS/API integration by sending a customer identifier during checkout, or by creating
+              members through the partner API before transactions are ingested.
+            </p>
           </div>
         </div>
+        <section className="panel spacious">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">How enrollment starts</p>
+              <h3>Connect customers to a published program</h3>
+            </div>
+          </div>
+          <div className="member-rule-map">
+            <article>
+              <span>1. Publish a program</span>
+              <strong>Rules define earning</strong>
+              <small>Members need an active program enrollment before transactions can earn points.</small>
+            </article>
+            <article>
+              <span>2. Send a customer identifier</span>
+              <strong>External ID, email, or phone</strong>
+              <small>Paisa maps partner identifiers to an internal member record.</small>
+            </article>
+            <article>
+              <span>3. Ingest transactions</span>
+              <strong>Balances update automatically</strong>
+              <small>Once enrolled, purchases calculate rewards and appear here with ledger history.</small>
+            </article>
+          </div>
+        </section>
       </section>
     );
   }
@@ -22,10 +57,6 @@ export default function Members({ enrollments, programs, transactions, onUpdateE
   const availablePackages = program?.rulePackages || [];
   const selectedAddOns = selected.addOns || [];
   const activePackages = availablePackages.filter((pkg) => selectedAddOns.includes(pkg.id));
-  const memberTransactions = useMemo(
-    () => transactions.filter((transaction) => transaction.member === selected.member),
-    [transactions, selected.member],
-  );
   const candidatePackages = availablePackages.filter((pkg) => !selectedAddOns.includes(pkg.id));
 
   function moveMember() {

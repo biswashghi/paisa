@@ -1,0 +1,394 @@
+/* Palette options for visual review. */
+:root[data-theme="graphite"] {
+  color-scheme: dark;
+  --ink: #f3f6fa;
+  --text: #c7d0dc;
+  --muted: #9daabb;
+  --faint: #78879a;
+  --line: rgba(205, 220, 238, 0.18);
+  --line-strong: rgba(222, 232, 244, 0.3);
+  --teal: #69d6c7;
+  --teal-dark: #42b5aa;
+  --blue: #8bb8e8;
+  --green: #a3df9a;
+  --amber: #e9c46a;
+  --red: #e87979;
+  --purple: #b7a4dc;
+  --theme-body-bg:
+    linear-gradient(120deg, rgba(105, 214, 199, 0.08), transparent 32%),
+    linear-gradient(300deg, rgba(139, 184, 232, 0.07), transparent 36%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 72px),
+    #10151f;
+  --theme-sidebar-bg:
+    linear-gradient(180deg, rgba(17, 24, 35, 0.98), rgba(11, 16, 25, 0.98)),
+    #111823;
+  --theme-topbar-bg: rgba(14, 19, 29, 0.86);
+  --theme-panel-bg:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)),
+    rgba(18, 24, 35, 0.88);
+  --theme-hero-bg:
+    linear-gradient(135deg, rgba(105, 214, 199, 0.1), transparent 36%),
+    linear-gradient(315deg, rgba(139, 184, 232, 0.09), transparent 42%),
+    rgba(18, 24, 35, 0.92);
+  --theme-card-bg:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(16, 22, 33, 0.84);
+  --theme-action-bg:
+    linear-gradient(135deg, rgba(233, 196, 106, 0.1), rgba(105, 214, 199, 0.065)),
+    rgba(16, 22, 33, 0.9);
+  --theme-primary-bg: linear-gradient(135deg, #e9c46a, #69d6c7);
+  --theme-primary-text: #10151f;
+}
+
+:root[data-theme="porcelain"] {
+  color-scheme: light;
+  --ink: #18212b;
+  --text: #2e3b49;
+  --muted: #667587;
+  --faint: #8491a0;
+  --line: rgba(34, 49, 66, 0.14);
+  --line-strong: rgba(34, 49, 66, 0.24);
+  --teal: #1d8f83;
+  --teal-dark: #156d65;
+  --blue: #386fa7;
+  --green: #417c48;
+  --amber: #b1812c;
+  --red: #b84848;
+  --purple: #7661a6;
+  --theme-body-bg:
+    linear-gradient(120deg, rgba(29, 143, 131, 0.12), transparent 34%),
+    linear-gradient(300deg, rgba(177, 129, 44, 0.1), transparent 36%),
+    repeating-linear-gradient(90deg, rgba(24, 33, 43, 0.035) 0 1px, transparent 1px 76px),
+    #eef2ef;
+  --theme-sidebar-bg:
+    linear-gradient(180deg, rgba(247, 249, 246, 0.98), rgba(229, 236, 232, 0.98)),
+    #f3f6f2;
+  --theme-topbar-bg: rgba(245, 248, 245, 0.88);
+  --theme-panel-bg:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(246, 249, 247, 0.76)),
+    #ffffff;
+  --theme-hero-bg:
+    linear-gradient(135deg, rgba(29, 143, 131, 0.13), transparent 38%),
+    linear-gradient(315deg, rgba(177, 129, 44, 0.11), transparent 42%),
+    rgba(255, 255, 255, 0.93);
+  --theme-card-bg:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 244, 241, 0.82)),
+    #ffffff;
+  --theme-action-bg:
+    linear-gradient(135deg, rgba(29, 143, 131, 0.1), rgba(177, 129, 44, 0.1)),
+    rgba(255, 255, 255, 0.92);
+  --theme-primary-bg: linear-gradient(135deg, #1d8f83, #e4b95f);
+  --theme-primary-text: #ffffff;
+}
+
+:root[data-theme="aubergine"] {
+  color-scheme: dark;
+  --ink: #fff8f1;
+  --text: #dccfc8;
+  --muted: #b9a8a7;
+  --faint: #8f7d82;
+  --line: rgba(255, 222, 199, 0.18);
+  --line-strong: rgba(255, 222, 199, 0.3);
+  --teal: #7dd5c1;
+  --teal-dark: #4cae9b;
+  --blue: #b6a4ff;
+  --green: #b9d78a;
+  --amber: #d79a57;
+  --red: #f08080;
+  --purple: #d6a0ff;
+  --theme-body-bg:
+    linear-gradient(120deg, rgba(125, 213, 193, 0.08), transparent 33%),
+    linear-gradient(300deg, rgba(215, 154, 87, 0.13), transparent 40%),
+    repeating-linear-gradient(90deg, rgba(255, 248, 241, 0.018) 0 1px, transparent 1px 72px),
+    #170f1b;
+  --theme-sidebar-bg:
+    linear-gradient(180deg, rgba(30, 18, 36, 0.98), rgba(20, 13, 26, 0.98)),
+    #1e1224;
+  --theme-topbar-bg: rgba(23, 15, 27, 0.88);
+  --theme-panel-bg:
+    linear-gradient(150deg, rgba(255, 248, 241, 0.075), rgba(255, 248, 241, 0.028)),
+    rgba(31, 20, 38, 0.9);
+  --theme-hero-bg:
+    linear-gradient(135deg, rgba(125, 213, 193, 0.1), transparent 38%),
+    linear-gradient(315deg, rgba(215, 154, 87, 0.15), transparent 44%),
+    rgba(31, 20, 38, 0.94);
+  --theme-card-bg:
+    linear-gradient(145deg, rgba(255, 248, 241, 0.07), rgba(255, 248, 241, 0.024)),
+    rgba(28, 18, 34, 0.86);
+  --theme-action-bg:
+    linear-gradient(135deg, rgba(215, 154, 87, 0.13), rgba(125, 213, 193, 0.06)),
+    rgba(31, 20, 38, 0.9);
+  --theme-primary-bg: linear-gradient(135deg, #d79a57, #7dd5c1);
+  --theme-primary-text: #170f1b;
+}
+
+:root[data-theme] body {
+  background: var(--theme-body-bg);
+  color: var(--text);
+}
+
+:root[data-theme] button {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--ink);
+}
+
+:root[data-theme="porcelain"] button {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme] button.primary {
+  border-color: transparent;
+  background: var(--theme-primary-bg);
+  color: var(--theme-primary-text);
+}
+
+:root[data-theme] input,
+:root[data-theme] select {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--ink);
+}
+
+:root[data-theme="porcelain"] input,
+:root[data-theme="porcelain"] select {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+:root[data-theme] .sidebar {
+  border-color: var(--line);
+  background: var(--theme-sidebar-bg);
+}
+
+:root[data-theme] .topbar {
+  border-color: var(--line);
+  background: var(--theme-topbar-bg);
+}
+
+:root[data-theme] .hero-panel,
+:root[data-theme] .view-header,
+:root[data-theme] .panel,
+:root[data-theme] .summary-card,
+:root[data-theme] .program-tile,
+:root[data-theme] .member-card,
+:root[data-theme] .rule-edit-card {
+  border-color: var(--line);
+  background: var(--theme-panel-bg);
+}
+
+:root[data-theme] .dashboard-command {
+  background: var(--theme-hero-bg);
+}
+
+:root[data-theme] .program-tile,
+:root[data-theme] .list-item,
+:root[data-theme] .program-command-card,
+:root[data-theme] .member-profile-header,
+:root[data-theme] .package-toolbar,
+:root[data-theme] .program-stat-row div,
+:root[data-theme] .distribution-list article,
+:root[data-theme] .distribution-list div,
+:root[data-theme] .rule-summary-list article,
+:root[data-theme] .addon-card,
+:root[data-theme] .architecture-map article,
+:root[data-theme] .package-board article,
+:root[data-theme] .issue-box,
+:root[data-theme] .member-rule-map article,
+:root[data-theme] .cashier-member,
+:root[data-theme] .redemption-ticket,
+:root[data-theme] .secret-box,
+:root[data-theme] .mini-card,
+:root[data-theme] .flow-card {
+  border-color: var(--line);
+  background: var(--theme-card-bg);
+}
+
+:root[data-theme] .action-rail {
+  border-color: var(--line);
+  background: var(--theme-action-bg);
+}
+
+:root[data-theme] .summary-card.teal {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--teal) 16%, transparent), transparent), var(--theme-card-bg);
+}
+
+:root[data-theme] .summary-card.green {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--green) 16%, transparent), transparent), var(--theme-card-bg);
+}
+
+:root[data-theme] .summary-card.amber {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--amber) 16%, transparent), transparent), var(--theme-card-bg);
+}
+
+:root[data-theme] .summary-card.blue {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--blue) 16%, transparent), transparent), var(--theme-card-bg);
+}
+
+:root[data-theme] .loyalty-visual,
+:root[data-theme] .rule-canvas {
+  border-color: var(--line);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 31px, color-mix(in srgb, var(--ink) 8%, transparent) 31px 32px),
+    repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--ink) 7%, transparent) 31px 32px),
+    var(--theme-card-bg);
+}
+
+:root[data-theme] .meter-track span,
+:root[data-theme] .flow-line {
+  background: linear-gradient(90deg, var(--teal), var(--blue), var(--amber));
+}
+
+:root[data-theme] .sidebar nav button.active {
+  border-color: color-mix(in srgb, var(--teal) 50%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--teal) 16%, transparent), color-mix(in srgb, var(--amber) 12%, transparent)),
+    rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="porcelain"] .sidebar nav button.active {
+  background:
+    linear-gradient(135deg, rgba(29, 143, 131, 0.12), rgba(177, 129, 44, 0.08)),
+    rgba(255, 255, 255, 0.86);
+}
+
+:root[data-theme] .nav-index,
+:root[data-theme] .status-pill {
+  border-color: var(--line);
+}
+
+:root[data-theme] .nav-index,
+:root[data-theme] .sidebar nav small,
+:root[data-theme] .sidebar-snapshot small,
+:root[data-theme] .summary-card span,
+:root[data-theme] .summary-card small,
+:root[data-theme] .table-row span,
+:root[data-theme] .context-strip span,
+:root[data-theme] .command-search span {
+  color: var(--muted);
+}
+
+:root[data-theme="porcelain"] .paisa-logo.compact img,
+:root[data-theme="porcelain"] .paisa-logo.login img {
+  filter: none;
+  mix-blend-mode: multiply;
+}
+
+:root[data-theme="porcelain"] .login-page {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(29, 143, 131, 0.14), transparent 30%),
+    radial-gradient(circle at 82% 72%, rgba(177, 129, 44, 0.13), transparent 32%),
+    repeating-linear-gradient(90deg, rgba(24, 33, 43, 0.04) 0 1px, transparent 1px 72px),
+    #eef2ef;
+}
+
+:root[data-theme="porcelain"] .login-card {
+  border-color: rgba(34, 49, 66, 0.16);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 245, 0.94)),
+    #ffffff;
+  color: var(--text);
+  box-shadow: 0 22px 70px rgba(24, 33, 43, 0.14);
+}
+
+:root[data-theme="porcelain"] .login-card::before {
+  background:
+    linear-gradient(90deg, transparent, rgba(29, 143, 131, 0.08), transparent),
+    repeating-linear-gradient(135deg, transparent 0 18px, rgba(24, 33, 43, 0.035) 18px 19px);
+}
+
+:root[data-theme="porcelain"] .paisa-logo.login {
+  border-color: rgba(34, 49, 66, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.82);
+}
+
+:root[data-theme="porcelain"] .login-card h1,
+:root[data-theme="porcelain"] .login-partner strong,
+:root[data-theme="porcelain"] .login-field {
+  color: var(--ink);
+}
+
+:root[data-theme="porcelain"] .login-partner {
+  border-color: rgba(34, 49, 66, 0.14);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(237, 244, 240, 0.88)),
+    #ffffff;
+}
+
+:root[data-theme="porcelain"] .login-partner span,
+:root[data-theme="porcelain"] .login-partner small {
+  color: #526273;
+}
+
+:root[data-theme="porcelain"] .sidebar-brand strong,
+:root[data-theme="porcelain"] .sidebar-snapshot strong,
+:root[data-theme="porcelain"] .sidebar nav strong,
+:root[data-theme="porcelain"] .sidebar-footer strong,
+:root[data-theme="porcelain"] .flow-card strong,
+:root[data-theme="porcelain"] .graph-node strong {
+  color: var(--ink);
+}
+
+:root[data-theme="porcelain"] .sidebar-brand span,
+:root[data-theme="porcelain"] .sidebar-footer span,
+:root[data-theme="porcelain"] .sidebar-footer small,
+:root[data-theme="porcelain"] .sidebar-snapshot span,
+:root[data-theme="porcelain"] .sidebar-snapshot small,
+:root[data-theme="porcelain"] .sidebar nav small,
+:root[data-theme="porcelain"] .flow-card span,
+:root[data-theme="porcelain"] .graph-node span,
+:root[data-theme="porcelain"] .graph-node small {
+  color: #667587;
+}
+
+:root[data-theme="porcelain"] .hero-subcopy {
+  color: #4f5e6f;
+}
+
+:root[data-theme="porcelain"] .command-steps span,
+:root[data-theme="porcelain"] .studio-scope-line span,
+:root[data-theme="porcelain"] .graph-legend span {
+  border-color: rgba(34, 49, 66, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: #3a4858;
+}
+
+:root[data-theme="porcelain"] .loyalty-visual::before {
+  border-color: rgba(29, 143, 131, 0.16);
+}
+
+:root[data-theme="porcelain"] .flow-card {
+  box-shadow: 0 18px 40px rgba(36, 49, 64, 0.12);
+}
+
+:root[data-theme="porcelain"] .good-text {
+  color: #2f7a3c;
+}
+
+:root[data-theme="porcelain"] .status-pill.good {
+  background: rgba(65, 124, 72, 0.12);
+  color: #2f7a3c;
+}
+
+.theme-select {
+  min-width: 132px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 6px 8px;
+}
+
+.theme-select select {
+  min-height: 20px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.theme-select span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 620;
+}

@@ -128,6 +128,14 @@ func (s fakeProgramStore) Create(ctx context.Context, partnerID string, body dom
 	return domain.Program{ID: "program_1", PartnerID: partnerID, Name: body.Name, Status: domain.StatusActive}, nil
 }
 
+func (s fakeProgramStore) Update(ctx context.Context, partnerID, programID string, body domain.ProgramRequest) (domain.Program, error) {
+	return domain.Program{ID: programID, PartnerID: partnerID, Name: body.Name, TierCode: body.TierCode, Status: domain.StatusActive, Priority: body.Priority}, nil
+}
+
+func (s fakeProgramStore) DeleteDraft(ctx context.Context, partnerID, programID string) error {
+	return nil
+}
+
 func (s fakeProgramStore) List(ctx context.Context, partnerID string) ([]domain.Program, error) {
 	return []domain.Program{{ID: "program_1", PartnerID: partnerID, Status: domain.StatusActive}}, nil
 }

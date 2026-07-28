@@ -23,6 +23,108 @@ func (s ProgramStore) Create(ctx context.Context, partnerID string, body domain.
 	return program, AppErrorFromDB(err)
 }
 
+func (s ProgramStore) Update(ctx context.Context, partnerID, programID string, body domain.ProgramRequest) (domain.Program, error) {
+	var program domain.Program
+	err := s.q.QueryRowContext(ctx, `
+		UPDATE paisa.programs
+		SET name = $3,
+		    tier_code = NULLIF($4, ''),
+		    priority = $5,
+		    updated_at = now()
+		WHERE id = $1 AND partner_id = $2
+		RETURNING id, partner_id, name, COALESCE(tier_code, ''), status, priority, created_at, updated_at`,
+		programID, partnerID, body.Name, body.TierCode, body.Priority,
+	).Scan(&program.ID, &program.PartnerID, &program.Name, &program.TierCode, &program.Status, &program.Priority, &program.CreatedAt, &program.UpdatedAt)
+	return program, AppErrorFromDB(err)
+}
+
+func (s ProgramStore) DeleteDraft(ctx context.Context, partnerID, programID string) error {
+	if err := s.ensureDraftDeletable(ctx, partnerID, programID); err != nil {
+		return err
+	}
+
+	statements := []string{
+		`DELETE FROM paisa.redemption_codes rc
+		 USING paisa.catalog_items ci
+		 WHERE rc.catalog_item_id = ci.id AND ci.partner_id = $1 AND ci.program_id = $2`,
+		`DELETE FROM paisa.catalog_items WHERE partner_id = $1 AND program_id = $2`,
+		`DELETE FROM paisa.rule_dependencies rd
+		 USING paisa.earning_rules er, paisa.rule_groups rg, paisa.program_rule_versions prv
+		 WHERE (rd.rule_id = er.id OR rd.depends_on_rule_id = er.id)
+		   AND er.rule_group_id = rg.id
+		   AND rg.rule_version_id = prv.id
+		   AND prv.partner_id = $1
+		   AND prv.program_id = $2`,
+		`DELETE FROM paisa.rule_limit_usage rlu
+		 USING paisa.rule_limits rl, paisa.earning_rules er, paisa.rule_groups rg, paisa.program_rule_versions prv
+		 WHERE rlu.rule_limit_id = rl.id
+		   AND rl.rule_id = er.id
+		   AND er.rule_group_id = rg.id
+		   AND rg.rule_version_id = prv.id
+		   AND prv.partner_id = $1
+		   AND prv.program_id = $2`,
+		`DELETE FROM paisa.rule_limits rl
+		 USING paisa.earning_rules er, paisa.rule_groups rg, paisa.program_rule_versions prv
+		 WHERE rl.rule_id = er.id
+		   AND er.rule_group_id = rg.id
+		   AND rg.rule_version_id = prv.id
+		   AND prv.partner_id = $1
+		   AND prv.program_id = $2`,
+		`DELETE FROM paisa.earning_rules er
+		 USING paisa.rule_groups rg, paisa.program_rule_versions prv
+		 WHERE er.rule_group_id = rg.id
+		   AND rg.rule_version_id = prv.id
+		   AND prv.partner_id = $1
+		   AND prv.program_id = $2`,
+		`DELETE FROM paisa.rule_groups rg
+		 USING paisa.program_rule_versions prv
+		 WHERE rg.rule_version_id = prv.id
+		   AND prv.partner_id = $1
+		   AND prv.program_id = $2`,
+		`DELETE FROM paisa.program_rule_versions WHERE partner_id = $1 AND program_id = $2`,
+		`DELETE FROM paisa.programs WHERE partner_id = $1 AND id = $2`,
+	}
+	for _, statement := range statements {
+		if _, err := s.q.ExecContext(ctx, statement, partnerID, programID); err != nil {
+			return AppErrorFromDB(err)
+		}
+	}
+	return nil
+}
+
+func (s ProgramStore) ensureDraftDeletable(ctx context.Context, partnerID, programID string) error {
+	var exists bool
+	if err := s.q.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM paisa.programs WHERE id = $1 AND partner_id = $2)`, programID, partnerID).Scan(&exists); err != nil {
+		return AppErrorFromDB(err)
+	}
+	if !exists {
+		return domain.AppError{Kind: domain.ErrorKindNotFound, Message: "program not found"}
+	}
+
+	checks := []struct {
+		query   string
+		message string
+	}{
+		{`SELECT EXISTS (SELECT 1 FROM paisa.program_rule_versions WHERE partner_id = $1 AND program_id = $2 AND status <> 'draft')`, "published or archived programs cannot be deleted"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.program_enrollments WHERE partner_id = $1 AND program_id = $2)`, "program has member enrollments"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.member_rule_assignments mra JOIN paisa.program_rule_versions prv ON prv.id = mra.rule_version_id WHERE prv.partner_id = $1 AND prv.program_id = $2)`, "program has member rule assignments"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.reward_calculations WHERE partner_id = $1 AND program_id = $2)`, "program has reward calculations"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.ledger_entries WHERE partner_id = $1 AND program_id = $2)`, "program has ledger entries"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.redemptions r JOIN paisa.catalog_items ci ON ci.id = r.catalog_item_id WHERE ci.partner_id = $1 AND ci.program_id = $2)`, "program has redemptions"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.campaigns WHERE partner_id = $1 AND program_id = $2)`, "program has campaigns"},
+		{`SELECT EXISTS (SELECT 1 FROM paisa.campaigns c JOIN paisa.catalog_items ci ON ci.id = c.reward_catalog_item_id WHERE ci.partner_id = $1 AND ci.program_id = $2)`, "program rewards are used by campaigns"},
+	}
+	for _, check := range checks {
+		if err := s.q.QueryRowContext(ctx, check.query, partnerID, programID).Scan(&exists); err != nil {
+			return AppErrorFromDB(err)
+		}
+		if exists {
+			return domain.ConflictError(check.message)
+		}
+	}
+	return nil
+}
+
 func (s ProgramStore) List(ctx context.Context, partnerID string) ([]domain.Program, error) {
 	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, partner_id, name, COALESCE(tier_code, ''), status, priority, created_at, updated_at

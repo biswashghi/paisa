@@ -142,7 +142,7 @@ func validateRuleConfig(rule RuleGraphRule) error {
 	}
 	switch rule.RuleType {
 	case RuleTypePointsPerDollar:
-		if ConfigInt(rule.Formula, "points_per_dollar", "pointsPerDollar") <= 0 {
+		if ConfigFloat(rule.Formula, "points_per_dollar", "pointsPerDollar") <= 0 {
 			return InvalidError(fmt.Sprintf("rule %s must set pointsPerDollar", rule.ID))
 		}
 	case RuleTypeFixedPerTransaction, RuleTypeFirstPurchaseBonus:

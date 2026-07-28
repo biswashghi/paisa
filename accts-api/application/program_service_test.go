@@ -41,3 +41,26 @@ func TestPublishRuleVersionRejectsUnsupportedDependency(t *testing.T) {
 		t.Fatalf("expected invalid dependency error, got %v", err)
 	}
 }
+
+func TestPublishRuleVersionAllowsDecimalPointsPerDollar(t *testing.T) {
+	fake := newFakeAppStore()
+	fake.ruleVersionStatus = domain.RuleDraft
+	fake.ruleGraph = domain.RuleGraph{
+		Groups: []domain.RuleGraphGroup{{ID: "group_1", Strategy: domain.RuleStrategyStack}},
+		Rules: []domain.RuleGraphRule{{
+			ID:       "rule_1",
+			GroupID:  "group_1",
+			RuleType: domain.RuleTypePointsPerDollar,
+			Priority: 1,
+			Formula:  domain.JSONMap{"pointsPerDollar": 0.01},
+		}},
+	}
+
+	_, err := ProgramService{app: testApp(fake)}.PublishRuleVersion(context.Background(), "acme-demo", "program_1", "version_1")
+	if err != nil {
+		t.Fatalf("expected decimal pointsPerDollar to publish, got %v", err)
+	}
+	if !fake.publishedRuleVersion {
+		t.Fatal("expected decimal rule graph to publish")
+	}
+}

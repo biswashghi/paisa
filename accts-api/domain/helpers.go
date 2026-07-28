@@ -210,6 +210,15 @@ func ConfigInt(config JSONMap, keys ...string) int {
 	return 0
 }
 
+func ConfigFloat(config JSONMap, keys ...string) float64 {
+	for _, key := range keys {
+		if value, ok := config[key]; ok {
+			return FloatFromAny(value)
+		}
+	}
+	return 0
+}
+
 func BoolConfig(config JSONMap, key string) bool {
 	value, ok := config[key]
 	if !ok {
@@ -271,6 +280,25 @@ func IntFromAny(value interface{}) int {
 	case string:
 		i, _ := strconv.Atoi(typed)
 		return i
+	default:
+		return 0
+	}
+}
+
+func FloatFromAny(value interface{}) float64 {
+	switch typed := value.(type) {
+	case int:
+		return float64(typed)
+	case int64:
+		return float64(typed)
+	case float64:
+		return typed
+	case json.Number:
+		f, _ := strconv.ParseFloat(typed.String(), 64)
+		return f
+	case string:
+		f, _ := strconv.ParseFloat(typed, 64)
+		return f
 	default:
 		return 0
 	}

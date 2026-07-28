@@ -7,15 +7,32 @@ export function createProgramDraft(index) {
     members: 0,
     liabilityPoints: 0,
     validationScore: 0,
-    rules: createRulesTemplate("max_of"),
+    rules: createRulesTemplate("base"),
     rulePackages: [],
   };
 }
 
 export function createRulesTemplate(kind) {
+  if (kind === "base") {
+    return {
+      earnBasis: "total",
+      groups: [
+        {
+          id: `group-${Date.now()}`,
+          name: "Every purchase earns",
+          strategy: "stack",
+          status: "draft",
+          rules: [
+            createRule("Base earn", "base_earn", 1, "All transactions", ""),
+          ],
+        },
+      ],
+    };
+  }
+
   if (kind === "stack") {
     return {
-      earnBasis: "eligible",
+      earnBasis: "total",
       groups: [
         {
           id: `group-${Date.now()}`,
@@ -24,7 +41,7 @@ export function createRulesTemplate(kind) {
           status: "draft",
           rules: [
             createRule("Base earn", "base_earn", 1, "All transactions", ""),
-            { ...createRule("First purchase bonus", "first_purchase_bonus", 0, "first purchase", "once / member"), type: "fixed_per_transaction", points: 75 },
+            { ...createRule("First purchase bonus", "first_purchase_bonus", 0, "first purchase", "once / member"), type: "fixed_per_transaction", points: 75, interaction: { mode: "adds" } },
           ],
         },
       ],
@@ -33,7 +50,7 @@ export function createRulesTemplate(kind) {
 
   if (kind === "waterfall") {
     return {
-      earnBasis: "eligible",
+      earnBasis: "total",
       groups: [
         {
           id: `group-${Date.now()}`,
@@ -41,8 +58,13 @@ export function createRulesTemplate(kind) {
           strategy: "waterfall",
           status: "draft",
           rules: [
-            createRule("Category boost capped", "category_cap", 5, "grocery", "5000 basis / month"),
-            createRule("Remainder earn", "remainder_earn", 1, "grocery", "after cap"),
+            { ...createRule("Category boost capped", "category_cap", 5, "grocery", "5000 basis / month"), basis: "eligible" },
+            {
+              ...createRule("Remainder earn", "remainder_earn", 1, "grocery", "after cap"),
+              basis: "eligible",
+              interaction: { mode: "overflow_after_cap", dependsOnRuleKey: "category_cap" },
+              dependencies: [{ dependsOnRuleKey: "category_cap", dependencyType: "requires_exhausted" }],
+            },
           ],
         },
       ],
@@ -50,7 +72,7 @@ export function createRulesTemplate(kind) {
   }
 
   return {
-    earnBasis: "eligible",
+    earnBasis: "total",
     groups: [
       {
         id: `group-${Date.now()}`,
@@ -59,7 +81,7 @@ export function createRulesTemplate(kind) {
         status: "draft",
         rules: [
           createRule("Base earn", "base_earn", 1, "All transactions", ""),
-          createRule("Category bonus", "category_bonus", 5, "grocery", "300 pts / month"),
+          { ...createRule("Category bonus", "category_bonus", 5, "grocery", "300 pts / month"), basis: "eligible", interaction: { mode: "better_of" } },
         ],
       },
     ],
@@ -75,6 +97,9 @@ export function createRule(name, key, pointsPerDollar, category, cap) {
     pointsPerDollar,
     category,
     cap,
+    limit: limitFromCap(cap),
+    interaction: { mode: "adds" },
+    dependencies: [],
     status: "active",
   };
 }
@@ -108,13 +133,14 @@ export function rulesToPayload(program) {
       resolutionStrategy: group.strategy,
       priority: groupIndex + 1,
       rules: group.rules.map((rule, ruleIndex) => {
-        const eligibilityConfig = {};
+        const eligibilityConfig = { basis: rule.basis || program.rules.earnBasis };
         if (rule.category && rule.category !== "All transactions" && rule.category !== "first purchase") {
           eligibilityConfig.categories = [rule.category];
         }
         if (rule.category === "first purchase") {
           eligibilityConfig.firstPurchase = true;
         }
+        const limits = limitsFromRule(rule);
         return {
           ruleKey: rule.key,
           name: rule.name,
@@ -123,8 +149,67 @@ export function rulesToPayload(program) {
           status: rule.status,
           eligibilityConfig,
           formulaConfig: rule.type === "points_per_dollar" ? { pointsPerDollar: Number(rule.pointsPerDollar) } : { points: Number(rule.points) },
+          limits,
+          dependencies: dependenciesFromRule(rule, group.rules),
         };
       }),
     })),
   };
+}
+
+export function limitsFromRule(rule) {
+  if (rule.limit?.enabled) return limitsFromLimit(rule.limit);
+  return limitsFromCap(rule.cap);
+}
+
+export function limitsFromCap(cap = "") {
+  return limitsFromLimit(limitFromCap(cap));
+}
+
+export function limitFromCap(cap = "") {
+  const normalized = String(cap).trim().toLowerCase();
+  if (!normalized || normalized === "after cap" || normalized.includes("once")) {
+    return { enabled: false, metric: "points", amount: 300, period: "calendar_month", scope: "member" };
+  }
+  const amount = Number(normalized.match(/\d+(?:\.\d+)?/)?.[0] || 0);
+  if (!amount) return { enabled: false, metric: "points", amount: 300, period: "calendar_month", scope: "member" };
+  const period = normalized.includes("month") ? "calendar_month" : normalized.includes("day") ? "day" : "lifetime";
+  const metric = normalized.includes("basis") ? "basis" : "points";
+  return { enabled: true, metric, amount, period, scope: "member" };
+}
+
+export function capFromLimit(limit) {
+  if (!limit?.enabled) return "";
+  const metricLabel = limit.metric === "basis" ? "basis" : "pts";
+  const periodLabel = limit.period === "calendar_month" ? "month" : limit.period;
+  return `${Number(limit.amount || 0)} ${metricLabel} / ${periodLabel}`;
+}
+
+export function limitsFromLimit(limit) {
+  if (!limit?.enabled || Number(limit.amount) <= 0) return [];
+  const output = {
+    scope: limit.scope || "member",
+    period: limit.period || "calendar_month",
+  };
+  if (limit.metric === "basis") {
+    output.maxBasisAmountMinor = Math.round(Number(limit.amount));
+  } else {
+    output.maxPoints = Math.round(Number(limit.amount));
+  }
+  return [output];
+}
+
+export function dependenciesFromRule(rule, rules) {
+  if (rule.interaction?.mode === "overflow_after_cap" && rule.interaction.dependsOnRuleKey) {
+    return [{ dependsOnRuleKey: rule.interaction.dependsOnRuleKey, dependencyType: "requires_exhausted" }];
+  }
+  if (rule.dependencies?.length) return rule.dependencies;
+  return dependenciesFromCap(rule, rules);
+}
+
+export function dependenciesFromCap(rule, rules) {
+  if (String(rule.cap || "").trim().toLowerCase() !== "after cap") return [];
+  const priorCappedRule = [...rules].reverse().find((candidate) => candidate.key !== rule.key && limitsFromCap(candidate.cap).some((limit) => limit.maxBasisAmountMinor));
+  if (!priorCappedRule) return [];
+  return [{ dependsOnRuleKey: priorCappedRule.key, dependencyType: "requires_exhausted" }];
 }

@@ -22,6 +22,30 @@ func (s ProgramService) CreateProgram(ctx context.Context, partnerKey string, bo
 	return s.app.stores.Programs.Create(ctx, partner.ID, body)
 }
 
+func (s ProgramService) UpdateProgram(ctx context.Context, partnerKey, programID string, body domain.ProgramRequest) (domain.Program, error) {
+	partner, err := s.app.stores.Partners.GetByKey(ctx, partnerKey)
+	if err != nil {
+		return domain.Program{}, err
+	}
+	if err := domain.EnsureActiveStatus("partner", partner.Status); err != nil {
+		return domain.Program{}, err
+	}
+	return s.app.stores.Programs.Update(ctx, partner.ID, programID, body)
+}
+
+func (s ProgramService) DeleteDraftProgram(ctx context.Context, partnerKey, programID string) error {
+	return s.app.uow.WithinTx(ctx, func(ctx context.Context, stores ports.StoreSet) error {
+		partner, err := stores.Partners.GetByKey(ctx, partnerKey)
+		if err != nil {
+			return err
+		}
+		if err := domain.EnsureActiveStatus("partner", partner.Status); err != nil {
+			return err
+		}
+		return stores.Programs.DeleteDraft(ctx, partner.ID, programID)
+	})
+}
+
 func (s ProgramService) ListPrograms(ctx context.Context, partnerKey string) ([]domain.Program, error) {
 	partner, err := s.app.stores.Partners.GetByKey(ctx, partnerKey)
 	if err != nil {
@@ -31,7 +55,7 @@ func (s ProgramService) ListPrograms(ctx context.Context, partnerKey string) ([]
 }
 
 func (s ProgramService) CreateRuleVersion(ctx context.Context, partnerKey, programID string, body domain.RuleVersionRequest) (domain.RuleVersion, error) {
-	body.EarnBasis = normalizeDefault(body.EarnBasis, "eligible")
+	body.EarnBasis = normalizeDefault(body.EarnBasis, "total")
 	body.Scope = normalizeDefault(body.Scope, domain.RuleScopeProgramBase)
 	if body.Scope == domain.RuleScopeMemberAddOn && body.RuleSetKey == "" {
 		body.RuleSetKey = body.Name

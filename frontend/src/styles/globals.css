@@ -1,0 +1,196 @@
+:root {
+  color-scheme: light;
+  --bg: #edf1f3;
+  --ink: #17202a;
+  --text: #24313f;
+  --muted: #697789;
+  --faint: #8a96a8;
+  --surface: #ffffff;
+  --surface-soft: #f7f9fb;
+  --surface-tint: #f2f7f6;
+  --line: #d8e0e7;
+  --line-strong: #c4ced8;
+  --teal: #007f79;
+  --teal-dark: #005d59;
+  --teal-soft: #e8f7f4;
+  --blue: #285eb8;
+  --blue-soft: #ecf3ff;
+  --green: #247a48;
+  --green-soft: #eaf7ef;
+  --amber: #b86f00;
+  --amber-soft: #fff4df;
+  --red: #b33d35;
+  --coral: #c75643;
+  --purple: #5a54b6;
+  --shadow: 0 20px 54px rgba(26, 38, 50, 0.1);
+  --shadow-sm: 0 12px 30px rgba(26, 38, 50, 0.07);
+  --font-body: "Avenir Next", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font-body);
+  --font-label: var(--font-body);
+  font-family: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: linear-gradient(145deg, #eef3f2 0%, #f7f7f4 46%, #eef4f5 100%);
+  color: var(--text);
+  letter-spacing: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 13px;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+button:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+  box-shadow: 0 10px 22px rgba(26, 38, 50, 0.08);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.notice-bar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 760;
+  padding: 12px 14px;
+}
+
+.notice-bar.error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+button.primary {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #ffffff;
+  font-weight: 850;
+}
+
+button.primary:hover {
+  background: var(--teal-dark);
+}
+
+button.wide {
+  width: 100%;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 39px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: rgba(0, 127, 121, 0.7);
+  box-shadow: 0 0 0 3px rgba(0, 127, 121, 0.12);
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 760;
+  line-height: 1.1;
+}
+
+h2 {
+  max-width: 860px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 740;
+  line-height: 1.24;
+}
+
+h3 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 740;
+}
+
+small {
+  color: var(--muted);
+}
+
+pre {
+  overflow: auto;
+  max-height: 360px;
+  margin: 0;
+  border: 1px solid #243142;
+  border-radius: 8px;
+  background: #111923;
+  color: #dce9f7;
+  padding: 16px;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.eyebrow {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+

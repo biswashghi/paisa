@@ -82,6 +82,18 @@ and the Go API reads the same file during local startup. Override the path with
 
 ## Local Setup
 
+One-command local startup for Postgres, the Go API, the frontend, and a default
+local partner admin:
+
+```bash
+PAISA_POSTGRES_PASSWORD=local-dev-password ./scripts/local-up.sh --fresh
+```
+
+The `--fresh` flag clears the local Postgres Docker volume first, so the partner
+starts with no programs, rules, rewards, or checkout history. The script prints
+the local URLs and login credentials. Press `Ctrl-C` to stop the API and
+frontend; Postgres stays running in Docker.
+
 Start Postgres:
 
 ```bash

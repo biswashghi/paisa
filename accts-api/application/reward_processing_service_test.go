@@ -48,6 +48,39 @@ func TestProcessPurchaseCalculatesRewardsAndPostsLedger(t *testing.T) {
 	}
 }
 
+func TestProcessPurchaseCalculatesDecimalPointsPerDollar(t *testing.T) {
+	fake := newFakeAppStore()
+	fake.acceptedIDs = []string{"evt_purchase"}
+	fake.processingEvents["evt_purchase"] = domain.RewardProcessingEvent{
+		ID:            "evt_purchase",
+		PartnerID:     "partner_1",
+		MemberID:      "member_1",
+		Type:          domain.EventPurchase,
+		EligibleMinor: 10000,
+		OccurredAt:    time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC),
+	}
+	fake.ruleGraph = domain.RuleGraph{
+		Groups: []domain.RuleGraphGroup{{ID: "group_1", Strategy: domain.RuleStrategyStack}},
+		Rules: []domain.RuleGraphRule{{
+			ID:       "rule_1",
+			GroupID:  "group_1",
+			RuleType: domain.RuleTypePointsPerDollar,
+			Formula:  domain.JSONMap{"pointsPerDollar": 0.01},
+		}},
+	}
+
+	result, err := RewardProcessingService{app: testApp(fake)}.ProcessTransactionEvents(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Processed != 1 || result.Failed != 0 {
+		t.Fatalf("unexpected processing result: %+v", result)
+	}
+	if got := fake.createdCalculations[0].PointsDelta; got != 1 {
+		t.Fatalf("expected $100 at 0.01 points per dollar to earn 1 point, got %d", got)
+	}
+}
+
 func TestProcessPurchaseStacksAssignedMemberAddOnRules(t *testing.T) {
 	fake := newFakeAppStore()
 	fake.acceptedIDs = []string{"evt_purchase"}

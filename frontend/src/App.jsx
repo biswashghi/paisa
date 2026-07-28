@@ -4,13 +4,14 @@ import Dashboard from "./components/Dashboard.jsx";
 import Login from "./components/Login.jsx";
 import Members from "./components/Members.jsx";
 import Onboarding from "./components/Onboarding.jsx";
+import PartnerWelcome from "./components/PartnerWelcome.jsx";
 import Programs from "./components/Programs.jsx";
 import Settings from "./components/Settings.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import TopBar from "./components/TopBar.jsx";
 import Transactions from "./components/Transactions.jsx";
 import { defaultPartner } from "./data/mockData.js";
-import { createRulesTemplate, rulesToPayload } from "./utils/rules.js";
+import { createRulesTemplate, limitFromCap, rulesToPayload } from "./utils/rules.js";
 
 const saved = JSON.parse(localStorage.getItem("paisa.partnerPortal") || "null");
 
@@ -35,6 +36,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const selectedProgram = useMemo(
     () => programs.find((program) => program.id === selectedProgramId) || programs[0],
@@ -46,13 +48,11 @@ export default function App() {
       hasProgram: programs.length > 0,
       hasRules: publishedPrograms > 0,
       hasReward: (dashboardSummary?.activeCatalogItems || 0) > 0,
-      hasCheckoutTest: transactions.length > 0,
     };
-  }, [dashboardSummary, programs, transactions]);
+  }, [dashboardSummary, programs]);
   const setupComplete = setupStatus.hasProgram
     && setupStatus.hasRules
-    && setupStatus.hasReward
-    && setupStatus.hasCheckoutTest;
+    && setupStatus.hasReward;
   const setupLocked = isLoggedIn && !setupComplete;
 
   useEffect(() => {
@@ -69,8 +69,20 @@ export default function App() {
   useEffect(() => {
     if (setupLocked && activeView !== "setup") {
       setActiveView("setup");
+      return;
+    }
+    if (!setupLocked && activeView === "setup") {
+      setActiveView("dashboard");
     }
   }, [activeView, setupLocked]);
+
+  useEffect(() => {
+    if (!setupLocked) {
+      setShowWelcome(false);
+      return;
+    }
+    setShowWelcome(!localStorage.getItem(welcomeStorageKey(partnerKey)));
+  }, [partnerKey, setupLocked]);
 
   function persistSession(next = {}) {
     localStorage.setItem("paisa.partnerPortal", JSON.stringify({
@@ -119,7 +131,13 @@ export default function App() {
     api.logout().catch(() => {});
     api.setAuthToken("");
     setIsLoggedIn(false);
+    setShowWelcome(false);
     persistSession({ isLoggedIn: false });
+  }
+
+  function beginSetup() {
+    localStorage.setItem(welcomeStorageKey(partnerKey), "true");
+    setShowWelcome(false);
   }
 
   async function loadWorkspace(key = partnerKey, existingPartner = null) {
@@ -164,22 +182,50 @@ export default function App() {
     return { summary, items, redemptionList, keys };
   }
 
-  async function createProgram() {
+  async function createProgram(input = {}) {
     await runAction("Program created.", async () => {
       const index = programs.length + 1;
       const program = await api.createProgram({
-        name: `Rewards Program ${index}`,
-        tierCode: `tier-${index}`,
+        name: input.name?.trim() || `Rewards Program ${index}`,
+        tierCode: input.tierCode?.trim() || `tier-${index}`,
         priority: index,
       });
-      setSelectedProgramId(program.id);
       await loadWorkspace(partnerKey);
+      setSelectedProgramId(program.id);
+      persistSession({ selectedProgramId: program.id });
       setActiveView("programs");
     });
   }
 
   function updateProgram(programId, patch) {
     setPrograms(programs.map((program) => program.id === programId ? { ...program, ...patch } : program));
+  }
+
+  async function saveProgramDetails(programId, patch) {
+    const current = programs.find((program) => program.id === programId);
+    if (!current) return;
+    await runAction("Program details saved.", async () => {
+      await api.updateProgram(programId, {
+        name: patch.name?.trim() || current.name,
+        tierCode: patch.tierCode?.trim() || current.tierCode,
+        priority: current.priority || programs.findIndex((program) => program.id === programId) + 1,
+      });
+      await loadWorkspace(partnerKey);
+      setSelectedProgramId(programId);
+    });
+  }
+
+  async function deleteDraftProgram(programId) {
+    const current = programs.find((program) => program.id === programId);
+    if (!current) return;
+    await runAction("Draft program deleted.", async () => {
+      await api.deleteProgram(programId);
+      const remaining = programs.filter((program) => program.id !== programId);
+      const nextSelected = remaining[0]?.id || "";
+      setSelectedProgramId(nextSelected);
+      persistSession({ selectedProgramId: nextSelected });
+      await loadWorkspace(partnerKey);
+    });
   }
 
   async function publishProgramRules(programId, draftProgram) {
@@ -361,32 +407,36 @@ export default function App() {
               <span>{error || notice}</span>
             </div>
           ) : null}
-          <Onboarding
-            partner={partner}
-            programs={programs}
-            transactions={transactions}
-            dashboardSummary={dashboardSummary}
-            catalogItems={catalogItems}
-            cashier={cashier}
-            setupLocked
-            selectedProgram={selectedProgram}
-            redemptions={redemptions}
-            onCreateProgram={createProgram}
-            onUpdateProgram={updateProgram}
-            onCreateRulePackage={createRulePackage}
-            onPublishProgramRules={publishProgramRules}
-            onUpdateRulePackage={updateRulePackage}
-            onPublishRulePackage={publishRulePackage}
-            onCreateCatalogItem={createCatalogItem}
-            onChangeView={setActiveView}
-            onResolveMember={resolveCashierMember}
-            onCreateTransaction={createCashierTransaction}
-            onCreateRedemption={createRedemption}
-            onValidateRedemption={validateRedemption}
-            onCaptureRedemption={captureRedemption}
-            onReleaseRedemption={releaseRedemption}
-            onLogout={logout}
-          />
+          {showWelcome ? (
+            <PartnerWelcome partner={partner} onBegin={beginSetup} onLogout={logout} />
+          ) : (
+            <Onboarding
+              partner={partner}
+              programs={programs}
+              transactions={transactions}
+              dashboardSummary={dashboardSummary}
+              catalogItems={catalogItems}
+              cashier={cashier}
+              setupLocked
+              selectedProgram={selectedProgram}
+              redemptions={redemptions}
+              onCreateProgram={createProgram}
+              onUpdateProgram={updateProgram}
+              onCreateRulePackage={createRulePackage}
+              onPublishProgramRules={publishProgramRules}
+              onUpdateRulePackage={updateRulePackage}
+              onPublishRulePackage={publishRulePackage}
+              onCreateCatalogItem={createCatalogItem}
+              onChangeView={setActiveView}
+              onResolveMember={resolveCashierMember}
+              onCreateTransaction={createCashierTransaction}
+              onCreateRedemption={createRedemption}
+              onValidateRedemption={validateRedemption}
+              onCaptureRedemption={captureRedemption}
+              onReleaseRedemption={releaseRedemption}
+              onLogout={logout}
+            />
+          )}
         </main>
       </div>
     );
@@ -422,6 +472,8 @@ export default function App() {
               onSelectProgram={selectProgram}
               onCreateProgram={createProgram}
               onUpdateProgram={updateProgram}
+              onSaveProgramDetails={saveProgramDetails}
+              onDeleteDraftProgram={deleteDraftProgram}
               enrollments={enrollments}
               transactions={transactions}
               catalogItems={catalogItems}
@@ -446,32 +498,6 @@ export default function App() {
           {activeView === "activity" ? (
             <Transactions transactions={transactions} programs={programs} redemptions={redemptions} />
           ) : null}
-          {activeView === "setup" ? (
-            <Onboarding
-              partner={partner}
-              programs={programs}
-              transactions={transactions}
-              dashboardSummary={dashboardSummary}
-              catalogItems={catalogItems}
-              cashier={cashier}
-              onCreateProgram={createProgram}
-              selectedProgram={selectedProgram}
-              redemptions={redemptions}
-              onUpdateProgram={updateProgram}
-              onCreateRulePackage={createRulePackage}
-              onPublishProgramRules={publishProgramRules}
-              onUpdateRulePackage={updateRulePackage}
-              onPublishRulePackage={publishRulePackage}
-              onCreateCatalogItem={createCatalogItem}
-              onChangeView={setActiveView}
-              onResolveMember={resolveCashierMember}
-              onCreateTransaction={createCashierTransaction}
-              onCreateRedemption={createRedemption}
-              onValidateRedemption={validateRedemption}
-              onCaptureRedemption={captureRedemption}
-              onReleaseRedemption={releaseRedemption}
-            />
-          ) : null}
           {activeView === "settings" ? (
             <Settings
               apiKeys={apiKeys}
@@ -489,7 +515,8 @@ async function hydrateProgram(program) {
   const versions = await api.listRuleVersions(program.id);
   const packages = await api.listRulePackages(program.id);
   const baseVersions = versions.filter((version) => version.scope !== "member_add_on");
-  const selectedBase = baseVersions.find((version) => version.status === "published") || baseVersions[0];
+  const publishedBase = baseVersions.find((version) => version.status === "published");
+  const selectedBase = publishedBase || baseVersions[0];
   const review = selectedBase ? await api.getRuleVersionReview(program.id, selectedBase.id) : null;
   const packageModels = await Promise.all(packages.map(async (pkg) => {
     const packageReview = await api.getRuleVersionReview(program.id, pkg.id);
@@ -499,12 +526,12 @@ async function hydrateProgram(program) {
     id: program.id,
     name: program.name,
     tierCode: program.tierCode || "base",
-    status: selectedBase?.status || program.status,
+    status: publishedBase ? "published" : "draft",
     members: 0,
     liabilityPoints: 0,
     validationScore: review?.validation?.valid ? 100 : 0,
     ruleVersionId: selectedBase?.id || "",
-    rules: review ? reviewToRules(review) : createRulesTemplate("max_of"),
+    rules: review ? reviewToRules(review) : createRulesTemplate("base"),
     rulePackages: packageModels,
   };
 }
@@ -612,6 +639,7 @@ function reviewToRules(review) {
 
 function reviewRuleToUiRule(rule) {
   const category = rule.eligibilityConfig?.categories?.[0] || (rule.eligibilityConfig?.firstPurchase ? "first purchase" : "All transactions");
+  const cap = rule.limits?.[0] ? ruleLimitToCap(rule.limits[0]) : "";
   return {
     id: rule.id,
     key: rule.ruleKey,
@@ -620,9 +648,20 @@ function reviewRuleToUiRule(rule) {
     pointsPerDollar: rule.formulaConfig?.pointsPerDollar || rule.formulaConfig?.points_per_dollar || 0,
     points: rule.formulaConfig?.points || rule.formulaConfig?.fixedPoints || 0,
     category,
-    cap: rule.limits?.[0] ? `${rule.limits[0].maxPoints || rule.limits[0].maxBasisAmountMinor} / ${rule.limits[0].period}` : "",
+    basis: rule.eligibilityConfig?.basis || "",
+    cap,
+    limit: limitFromCap(cap),
+    interaction: { mode: rule.dependencies?.some((dep) => dep.dependencyType === "requires_exhausted") ? "overflow_after_cap" : "adds", dependsOnRuleKey: rule.dependencies?.[0]?.dependsOnRuleKey || "" },
+    dependencies: rule.dependencies || [],
     status: rule.status,
   };
+}
+
+function ruleLimitToCap(limit) {
+  const period = limit.period === "calendar_month" ? "month" : limit.period;
+  if (limit.maxBasisAmountMinor) return `${limit.maxBasisAmountMinor} basis / ${period}`;
+  if (limit.maxPoints) return `${limit.maxPoints} pts / ${period}`;
+  return "";
 }
 
 function ruleVersionToPackage(version, review) {
@@ -640,4 +679,8 @@ function ruleVersionToPackage(version, review) {
 
 function titleizePartnerKey(key) {
   return key.split("-").filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ") || "Partner";
+}
+
+function welcomeStorageKey(key) {
+  return `paisa.partnerPortal.welcome.${key || "partner"}`;
 }
