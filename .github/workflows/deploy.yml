@@ -1,22 +1,22 @@
-name: Deploy Paisa
+name: Paisa server
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: paisa-deploy
-  cancel-in-progress: false
+  group: paisa-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:15
@@ -24,147 +24,166 @@ jobs:
           POSTGRES_DB: project
           POSTGRES_USER: project
           POSTGRES_PASSWORD: paisa-ci-password
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U project -d project"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+          --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       PAISA_POSTGRES_HOST: localhost
       PAISA_POSTGRES_PORT: "5432"
-      PAISA_POSTGRES_USER: project
       PAISA_POSTGRES_DB: project
+      PAISA_POSTGRES_USER: project
       PAISA_POSTGRES_PASSWORD: paisa-ci-password
       PAISA_SCHEMA_PATH: ${{ github.workspace }}/db/schema.sql
-      PAISA_ALLOWED_ORIGINS: http://localhost:5174
-
+      PAISA_ALLOWED_ORIGINS: http://127.0.0.1:5174
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: accts-api/go.mod
           cache-dependency-path: accts-api/go.sum
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: cd accts-api && go test ./... && go build ./...
+      - run: cd frontend && npm ci && npm run build
+      - run: bash -n scripts/deploy-vps.sh scripts/remote/deploy-production.sh tests/deploy-production.test.sh scripts/deploy-hetzner.sh
+      - run: make production-validate
 
-      - name: Run Go tests
-        working-directory: accts-api
-        run: go test ./...
-
-      - name: Build Go API
-        working-directory: accts-api
-        run: go build ./...
-
-      - name: Smoke API with Postgres
-        working-directory: accts-api
+  build-candidate:
+    needs: quality
+    runs-on: ubuntu-latest
+    outputs:
+      api_image: ${{ steps.reference.outputs.api_image }}
+      web_image: ${{ steps.reference.outputs.web_image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build API candidate
+        id: api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: api
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ github.event_name != 'pull_request' && format('ghcr.io/{0}/paisa-api:{1}', github.repository, github.sha) || format('paisa-api:ci-{0}', github.sha) }}
+          cache-from: type=gha,scope=paisa-api
+          cache-to: type=gha,mode=max,scope=paisa-api
+      - name: Build web candidate
+        id: web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: web
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ github.event_name != 'pull_request' && format('ghcr.io/{0}/paisa-web:{1}', github.repository, github.sha) || format('paisa-web:ci-{0}', github.sha) }}
+          cache-from: type=gha,scope=paisa-web
+          cache-to: type=gha,mode=max,scope=paisa-web
+      - name: Resolve immutable references
+        id: reference
         env:
-          PAISA_HTTP_ADDR: 127.0.0.1:18080
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
         run: |
-          go run server.go > /tmp/paisa-api.log 2>&1 &
-          api_pid=$!
-          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..20}; do
-            if curl --fail --silent --show-error http://127.0.0.1:18080/health; then
-              exit 0
-            fi
-            sleep 1
-          done
-          cat /tmp/paisa-api.log
-          exit 1
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "api_image=paisa-api:ci-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+            echo "web_image=paisa-web:ci-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          else
+            echo "api_image=ghcr.io/${GITHUB_REPOSITORY}/paisa-api@${API_DIGEST}" >> "$GITHUB_OUTPUT"
+            echo "web_image=ghcr.io/${GITHUB_REPOSITORY}/paisa-web@${WEB_DIGEST}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Export pull-request images
+        if: github.event_name == 'pull_request'
+        run: docker save "paisa-api:ci-${GITHUB_SHA}" "paisa-web:ci-${GITHUB_SHA}" | gzip > /tmp/paisa-images.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: paisa-candidate
+          path: /tmp/paisa-images.tar.gz
+          retention-days: 1
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: frontend
+  docker-staging:
+    needs: build-candidate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: paisa-candidate
+          path: /tmp
+      - if: github.event_name == 'pull_request'
+        run: gunzip -c /tmp/paisa-images.tar.gz | docker load
+      - if: github.event_name != 'pull_request'
         env:
-          VITE_PAISA_API_URL: https://api.paisa.example.com
-        run: npm run build
-
-      - name: Check deploy script syntax
-        run: |
-          bash -n scripts/deploy-vps.sh
-          bash -n scripts/deploy-hetzner.sh
-
-      - name: Check compose config
+          PAISA_API_IMAGE: ${{ needs.build-candidate.outputs.api_image }}
+          PAISA_WEB_IMAGE: ${{ needs.build-candidate.outputs.web_image }}
+        run: docker pull "$PAISA_API_IMAGE" && docker pull "$PAISA_WEB_IMAGE"
+      - name: Run ephemeral Docker staging
         env:
-          PAISA_POSTGRES_PASSWORD: paisa-ci-password
-          PAISA_API_DOMAIN: api.paisa.example.com
-          PAISA_INTERNAL_ADMIN_TOKEN: paisa-ci-internal-admin-token
-          PAISA_WEB_DOMAIN: paisa.example.com
-        run: docker compose -f docker-compose.prod.yml config
+          PAISA_API_IMAGE: ${{ needs.build-candidate.outputs.api_image }}
+          PAISA_WEB_IMAGE: ${{ needs.build-candidate.outputs.web_image }}
+          STAGING_NO_BUILD: "1"
+          STAGING_PROJECT: paisa-staging-${{ github.run_id }}
+        run: make staging-test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: paisa-staging-logs
+          path: staging.log
+          if-no-files-found: ignore
+          retention-days: 14
 
-  deploy:
-    needs: test
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+  production:
+    needs: [build-candidate, docker-staging]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET_CONFIGURED == 'true'
     runs-on: ubuntu-latest
     environment: production
-
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Configure SSH
         env:
-          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
-          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST || secrets.HETZNER_HOST }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY || secrets.HETZNER_SSH_KEY }}
         run: |
-          test -n "$HETZNER_HOST"
-          test -n "$HETZNER_SSH_KEY"
-          mkdir -p ~/.ssh
-          printf '%s\n' "$HETZNER_SSH_KEY" > ~/.ssh/hetzner
-          chmod 600 ~/.ssh/hetzner
-          ssh-keyscan -H "$HETZNER_HOST" >> ~/.ssh/known_hosts
-          {
-            echo "Host $HETZNER_HOST"
-            echo "  IdentityFile ~/.ssh/hetzner"
-            echo "  IdentitiesOnly yes"
-          } >> ~/.ssh/config
-
-      - name: Deploy to VPS
+          test -n "$VPS_HOST" && test -n "$VPS_SSH_KEY"
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          if [[ -n "$VPS_KNOWN_HOSTS" ]]; then printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts; else ssh-keyscan -H "$VPS_HOST" > ~/.ssh/known_hosts; fi
+      - name: Pull and deploy tested images
         env:
-          APP_API_HOST_PORT: ${{ vars.APP_API_HOST_PORT || '8791' }}
-          APP_WEB_HOST_PORT: ${{ vars.APP_WEB_HOST_PORT || '8790' }}
-          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
-          HETZNER_USER: ${{ secrets.HETZNER_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PAISA_API_DOMAIN: ${{ vars.PAISA_API_DOMAIN }}
+          PAISA_API_IMAGE: ${{ needs.build-candidate.outputs.api_image }}
           PAISA_INTERNAL_ADMIN_TOKEN: ${{ secrets.PAISA_INTERNAL_ADMIN_TOKEN }}
           PAISA_POSTGRES_PASSWORD: ${{ secrets.PAISA_POSTGRES_PASSWORD }}
           PAISA_WEB_DOMAIN: ${{ vars.PAISA_WEB_DOMAIN }}
+          PAISA_WEB_IMAGE: ${{ needs.build-candidate.outputs.web_image }}
+          VPS_HOST: ${{ secrets.VPS_HOST || secrets.HETZNER_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER || secrets.HETZNER_USER }}
         run: |
-          test -n "$HETZNER_USER"
-          test -n "$PAISA_API_DOMAIN"
-          test -n "$PAISA_WEB_DOMAIN"
-          test -n "$PAISA_INTERNAL_ADMIN_TOKEN"
-          test -n "$PAISA_POSTGRES_PASSWORD"
-          ./scripts/deploy-vps.sh \
-            "$HETZNER_USER" \
-            "$HETZNER_HOST" \
-            "https://github.com/biswashghi/paisa.git" \
-            main
-
-      - name: Verify deployment
-        env:
-          PAISA_API_DOMAIN: ${{ vars.PAISA_API_DOMAIN }}
-          PAISA_WEB_DOMAIN: ${{ vars.PAISA_WEB_DOMAIN }}
-        run: |
-          for attempt in {1..20}; do
-            if curl --fail --silent --show-error "https://${PAISA_API_DOMAIN}/health" >/dev/null &&
-               curl --fail --silent --show-error --head "https://${PAISA_WEB_DOMAIN}" >/dev/null; then
-              exit 0
-            fi
-            sleep 3
-          done
-          exit 1
+          set -euo pipefail
+          cleanup() { ssh "$VPS_USER@$VPS_HOST" 'sudo docker logout ghcr.io' || true; }
+          trap cleanup EXIT
+          printf '%s' "$GHCR_TOKEN" | ssh "$VPS_USER@$VPS_HOST" sudo docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          ./scripts/deploy-vps.sh "$VPS_USER" "$VPS_HOST"

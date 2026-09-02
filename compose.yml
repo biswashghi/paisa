@@ -1,27 +1,18 @@
 services:
   paisa-postgres:
     image: postgres:15
-    container_name: paisa-postgres
-    restart: unless-stopped
     environment:
       POSTGRES_DB: ${PAISA_POSTGRES_DB:-project}
       POSTGRES_USER: ${PAISA_POSTGRES_USER:-project}
       POSTGRES_PASSWORD: ${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}
-    volumes:
-      - paisa-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 12
 
   paisa-api:
-    build:
-      context: .
-      target: api
-    container_name: paisa-api
-    restart: unless-stopped
+    image: ${PAISA_API_IMAGE:-paisa-api:local}
     depends_on:
       paisa-postgres:
         condition: service_healthy
@@ -30,34 +21,22 @@ services:
       PAISA_POSTGRES_PORT: 5432
       PAISA_POSTGRES_DB: ${PAISA_POSTGRES_DB:-project}
       PAISA_POSTGRES_USER: ${PAISA_POSTGRES_USER:-project}
-      PAISA_POSTGRES_PASSWORD: ${PAISA_POSTGRES_PASSWORD:?PAISA_POSTGRES_PASSWORD is required}
+      PAISA_POSTGRES_PASSWORD: ${PAISA_POSTGRES_PASSWORD}
       PAISA_POSTGRES_SSLMODE: disable
       PAISA_INTERNAL_ADMIN_TOKEN: ${PAISA_INTERNAL_ADMIN_TOKEN:?PAISA_INTERNAL_ADMIN_TOKEN is required}
       PAISA_HTTP_ADDR: 0.0.0.0:8080
       PAISA_SCHEMA_PATH: /app/db/schema.sql
-      PAISA_ALLOWED_ORIGINS: https://${PAISA_WEB_DOMAIN:?PAISA_WEB_DOMAIN is required}
-    ports:
-      - "127.0.0.1:${APP_API_HOST_PORT:-8791}:8080"
+      PAISA_ALLOWED_ORIGINS: ${PAISA_ALLOWED_ORIGINS:?PAISA_ALLOWED_ORIGINS is required}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
-      interval: 30s
+      interval: 5s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 12
 
   paisa-web:
-    build:
-      context: .
-      target: web
-      args:
-        VITE_PAISA_API_URL: https://${PAISA_API_DOMAIN:?PAISA_API_DOMAIN is required}
-    container_name: paisa-web
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${APP_WEB_HOST_PORT:-8790}:80"
+    image: ${PAISA_WEB_IMAGE:-paisa-web:local}
+    environment:
+      PAISA_PUBLIC_API_URL: ${PAISA_PUBLIC_API_URL:?PAISA_PUBLIC_API_URL is required}
     depends_on:
       paisa-api:
-        condition: service_started
-
-volumes:
-  paisa-postgres-data:
+        condition: service_healthy

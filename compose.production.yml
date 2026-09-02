@@ -1,0 +1,30 @@
+services:
+  paisa-postgres:
+    restart: unless-stopped
+    networks: [private]
+    volumes:
+      - paisa-postgres-data:/var/lib/postgresql/data
+  paisa-api:
+    restart: unless-stopped
+    expose: ["8080"]
+    networks:
+      private:
+      edge:
+        aliases: [paisa-api]
+  paisa-web:
+    restart: unless-stopped
+    expose: ["80"]
+    networks:
+      edge:
+        aliases: [paisa-web]
+
+volumes:
+  paisa-postgres-data:
+    name: paisa_paisa-postgres-data
+
+networks:
+  private:
+  edge:
+    external: true
+    name: vps-edge
+

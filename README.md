@@ -71,9 +71,11 @@ docs/
 frontend/
   index.html
   src/
-postgres-docker/
-  docker-compose.yml
-  setup.sh
+compose.yml
+compose.local.yml
+compose.staging.yml
+compose.production.yml
+Makefile
 ```
 
 `db/schema.sql` is the shared schema source. Docker mounts it into Postgres init,
@@ -81,6 +83,18 @@ and the Go API reads the same file during local startup. Override the path with
 `PAISA_SCHEMA_PATH` if needed.
 
 ## Local Setup
+
+The standardized full-stack Docker path is:
+
+```bash
+make local-up
+make local-test
+make local-down
+```
+
+`make staging-test` runs the disposable container gate used by GitHub Actions,
+and `make production-validate` validates the VPS manifest without deploying it.
+Native development commands below remain available.
 
 One-command local startup for Postgres, the Go API, the frontend, and a default
 local partner admin:

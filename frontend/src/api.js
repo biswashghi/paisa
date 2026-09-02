@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_PAISA_API_URL || import.meta.env.VITE_API_BASE || "http://localhost:8080";
+const API_BASE = globalThis.__PAISA_CONFIG__?.apiBaseUrl || import.meta.env.VITE_PAISA_API_URL || import.meta.env.VITE_API_BASE || "http://localhost:8080";
 let authToken = localStorage.getItem("paisa.partnerPortal.token") || "";
 
 export function setAuthToken(token) {
@@ -67,6 +67,9 @@ export const api = {
 
   createLocation: (body) => request("/partner/v1/locations", { method: "POST", body: JSON.stringify(body) }),
   listLocations: () => request("/partner/v1/locations"),
+  listIntegrationConnections: () => request("/partner/v1/integration-connections"),
+  createCampaign: (body) => request("/partner/v1/campaigns", { method: "POST", body: JSON.stringify(body) }),
+  listCampaigns: () => request("/partner/v1/campaigns"),
   dashboardSummary: () => request("/partner/v1/dashboard"),
 
   createCatalogItem: (body) => request("/partner/v1/catalog-items", { method: "POST", body: JSON.stringify(body) }),

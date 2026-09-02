@@ -1,0 +1,9 @@
+{{PAISA_WEB_DOMAIN}} {
+  encode zstd gzip
+  reverse_proxy paisa-web:80
+}
+
+{{PAISA_API_DOMAIN}} {
+  encode zstd gzip
+  reverse_proxy paisa-api:8080
+}

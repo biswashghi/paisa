@@ -31,9 +31,6 @@ FROM node:20-bookworm-slim AS web-builder
 
 WORKDIR /src/frontend
 
-ARG VITE_PAISA_API_URL
-ENV VITE_PAISA_API_URL=${VITE_PAISA_API_URL}
-
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
@@ -43,6 +40,13 @@ RUN npm run build
 FROM caddy:2-alpine AS web
 
 COPY frontend/Caddyfile /etc/caddy/Caddyfile
+COPY frontend/docker-entrypoint.sh /usr/local/bin/paisa-web-entrypoint
 COPY --from=web-builder /src/frontend/dist /srv
+RUN chmod 0755 /usr/local/bin/paisa-web-entrypoint
+
+ENV PAISA_PUBLIC_API_URL=http://127.0.0.1:8080
 
 EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/paisa-web-entrypoint"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
